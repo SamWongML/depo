@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>A Build Guide — SOTA Hybrid Memory &amp; Knowledge Base for Coding Agents (2026)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,800&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0e;
+    --bg-soft: #141416;
+    --bg-card: #17181b;
+    --border: #26272b;
+    --border-soft: #1d1e21;
+    --ink: #ebe7df;
+    --ink-dim: #9a958b;
+    --ink-faint: #5e5b54;
+    --accent: #ffb454;
+    --accent-soft: #ffb45433;
+    --accent-deep: #c87f1e;
+    --green: #7fc28a;
+    --red: #d97a6a;
+    --blue: #7aa2c5;
+    --purple: #b89cd1;
+    --serif: 'Fraunces', 'Iowan Old Style', 'Palatino', serif;
+    --sans: 'IBM Plex Sans', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Menlo', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 300;
+    font-size: 16.5px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(ellipse 1200px 600px at 80% -10%, rgba(255,180,84,0.06), transparent 60%),
+      radial-gradient(ellipse 800px 600px at -10% 30%, rgba(122,162,197,0.04), transparent 70%);
+  }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ============ TOPBAR ============ */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    background: rgba(13,13,14,0.78);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .topbar-inner {
+    max-width: 1280px; margin: 0 auto;
+    padding: 14px 32px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
+    letter-spacing: 0.04em;
+  }
+  .topbar-inner .brand { color: var(--ink); }
+  .topbar-inner .dot {
+    display: inline-block; width: 8px; height: 8px;
+    background: var(--green); border-radius: 50%; margin-right: 8px;
+    box-shadow: 0 0 12px var(--green);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ============ HERO ============ */
+  .hero { max-width: 1280px; margin: 0 auto; padding: 100px 32px 80px; position: relative; z-index: 2; }
+  .hero-meta {
+    font-family: var(--mono); font-size: 12px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 28px;
+    display: flex; gap: 16px; align-items: center;
+  }
+  .hero-meta span:not(:first-child) { color: var(--ink-faint); }
+  .hero-meta .sep { width: 24px; height: 1px; background: var(--ink-faint); display: inline-block; }
+  .hero h1 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(44px, 7vw, 84px); line-height: 0.98;
+    letter-spacing: -0.02em; margin-bottom: 30px; max-width: 1100px;
+  }
+  .hero h1 em { font-style: italic; color: var(--accent); font-weight: 300; }
+  .hero h1 .strike {
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--ink) 0%, var(--ink-dim) 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero-lede {
+    font-size: 20px; line-height: 1.55; color: var(--ink-dim);
+    max-width: 740px; margin-bottom: 50px; font-weight: 300;
+  }
+  .hero-lede strong { color: var(--ink); font-weight: 500; }
+
+  .verdict-card {
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,180,84,0.04), rgba(255,180,84,0.01));
+    border-radius: 4px; padding: 36px; max-width: 940px;
+    position: relative; overflow: hidden;
+  }
+  .verdict-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--accent);
+  }
+  .verdict-label {
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.2em;
+    color: var(--accent); margin-bottom: 14px;
+  }
+  .verdict-card h2 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: 26px; line-height: 1.3; margin-bottom: 18px;
+    letter-spacing: -0.01em;
+  }
+  .verdict-card p { color: var(--ink-dim); font-size: 16px; line-height: 1.7; }
+  .verdict-card .stack-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; padding: 6px 12px;
+    border: 1px solid var(--border); background: var(--bg-soft);
+    color: var(--ink); border-radius: 2px;
+  }
+  .chip.amber { color: var(--accent); border-color: var(--accent-soft); }
+
+  /* ============ LAYOUT ============ */
+  .layout {
+    max-width: 1280px; margin: 0 auto; padding: 0 32px;
+    display: grid; grid-template-columns: 200px 1fr;
+    gap: 60px; position: relative; z-index: 2;
+  }
+  .toc {
+    position: sticky; top: 80px; align-self: start;
+    padding: 24px 0;
+    border-top: 1px solid var(--border-soft);
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .toc-label { color: var(--ink-faint); margin-bottom: 18px; font-size: 10px; }
+  .toc ol { list-style: none; counter-reset: toc; }
+  .toc li { counter-increment: toc; margin-bottom: 12px; }
+  .toc li a {
+    color: var(--ink-dim); text-decoration: none;
+    display: flex; gap: 10px; transition: color 0.2s;
+  }
+  .toc li a::before {
+    content: counter(toc, decimal-leading-zero);
+    color: var(--ink-faint); font-weight: 400;
+  }
+  .toc li a:hover { color: var(--accent); }
+  main { min-width: 0; padding-bottom: 120px; }
+
+  /* ============ SECTIONS ============ */
+  section { padding: 64px 0 32px; border-top: 1px solid var(--border-soft); }
+  section:first-child { border-top: none; padding-top: 32px; }
+  .section-num {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.2em; color: var(--accent);
+    text-transform: uppercase; margin-bottom: 14px;
+  }
+  h2.sec-title {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(32px, 4vw, 46px); line-height: 1.05;
+    letter-spacing: -0.02em; margin-bottom: 28px; max-width: 900px;
+  }
+  h2.sec-title em { font-style: italic; color: var(--accent); }
+  h3 {
+    font-family: var(--serif); font-weight: 500;
+    font-size: 26px; line-height: 1.2;
+    margin: 48px 0 16px; letter-spacing: -0.01em;
+  }
+  h4 {
+    font-family: var(--sans); font-weight: 500;
+    font-size: 17px; letter-spacing: 0.01em;
+    margin: 28px 0 10px; color: var(--ink);
+  }
+  p { margin-bottom: 18px; max-width: 78ch; color: var(--ink); }
+  p + p { margin-top: -6px; }
+  strong { font-weight: 500; color: var(--ink); }
+  em { font-style: italic; color: var(--accent); }
+  a {
+    color: var(--accent); text-decoration: none;
+    border-bottom: 1px solid transparent; transition: border-color 0.2s;
+  }
+  a:hover { border-bottom-color: var(--accent); }
+
+  code {
+    font-family: var(--mono); font-size: 0.88em;
+    background: var(--bg-soft); padding: 2px 6px;
+    border-radius: 2px; border: 1px solid var(--border-soft);
+    color: var(--accent);
+  }
+  pre {
+    font-family: var(--mono); background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 26px 24px 22px; overflow-x: auto;
+    font-size: 13px; line-height: 1.65;
+    margin: 24px 0; position: relative;
+  }
+  pre code {
+    background: none; padding: 0; border: none;
+    color: var(--ink); font-size: 13px;
+  }
+  pre::before {
+    content: attr(data-lang);
+    position: absolute; top: 8px; right: 14px;
+    font-size: 10px; color: var(--ink-faint);
+    letter-spacing: 0.15em; text-transform: uppercase;
+  }
+  .comment { color: var(--ink-faint); font-style: italic; }
+  .keyword { color: var(--accent); }
+  .string { color: var(--green); }
+  .number { color: var(--blue); }
+  .decorator { color: var(--purple); }
+
+  ul, ol { padding-left: 22px; margin-bottom: 22px; max-width: 78ch; }
+  li { margin-bottom: 8px; color: var(--ink); }
+  li::marker { color: var(--ink-faint); }
+
+  /* Callouts */
+  .callout {
+    border-left: 2px solid var(--accent);
+    padding: 18px 24px;
+    background: rgba(255,180,84,0.04);
+    margin: 24px 0; font-size: 15px;
+  }
+  .callout-label {
+    font-family: var(--mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.18em;
+    color: var(--accent); margin-bottom: 8px;
+  }
+  .callout p { color: var(--ink); margin-bottom: 0; }
+  .callout.warn { border-color: var(--red); background: rgba(217,122,106,0.05); }
+  .callout.warn .callout-label { color: var(--red); }
+  .callout.info { border-color: var(--blue); background: rgba(122,162,197,0.05); }
+  .callout.info .callout-label { color: var(--blue); }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 28px 0; border: 1px solid var(--border); border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--bg-soft); }
+  thead { background: var(--bg-card); }
+  th {
+    text-align: left; padding: 14px 18px;
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-dim); font-weight: 500;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 16px 18px; border-bottom: 1px solid var(--border-soft);
+    vertical-align: top; color: var(--ink);
+  }
+  tr:last-child td { border-bottom: none; }
+  td .pill { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 2px; }
+  .pill.win { background: rgba(127,194,138,0.15); color: var(--green); }
+  .pill.ok { background: rgba(122,162,197,0.15); color: var(--blue); }
+  .pill.meh { background: rgba(255,180,84,0.15); color: var(--accent); }
+  .pill.no { background: rgba(217,122,106,0.15); color: var(--red); }
+
+  /* Stack cards */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px; margin: 36px 0;
+  }
+  .stack-card {
+    border: 1px solid var(--border); background: var(--bg-card);
+    padding: 28px 26px; border-radius: 4px; position: relative;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .stack-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .stack-card .layer {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 10px;
+  }
+  .stack-card h4 {
+    font-family: var(--serif); font-weight: 500;
+    font-size: 22px; color: var(--ink); margin: 0 0 6px;
+  }
+  .stack-card .tag {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--accent); margin-bottom: 14px;
+  }
+  .stack-card p { font-size: 14px; color: var(--ink-dim); margin: 0; line-height: 1.55; }
+
+  /* Diagram */
+  .diagram {
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--bg-card), var(--bg-soft));
+    border-radius: 4px; padding: 36px 28px; margin: 32px 0;
+    font-family: var(--mono); font-size: 12px; overflow-x: auto;
+  }
+  .diagram pre {
+    background: none; border: none; padding: 0; margin: 0;
+    color: var(--ink); line-height: 1.4;
+  }
+  .diagram .accent { color: var(--accent); }
+  .diagram .dim { color: var(--ink-faint); }
+  .diagram .ok { color: var(--green); }
+  .diagram .blue { color: var(--blue); }
+  .diagram .purple { color: var(--purple); }
+
+  /* Tier card */
+  .tier-row {
+    display: grid; grid-template-columns: 140px 1fr; gap: 24px;
+    padding: 22px 0; border-bottom: 1px dashed var(--border-soft);
+    align-items: start;
+  }
+  .tier-row:last-child { border-bottom: none; }
+  .tier-row .tier-num {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .tier-row .tier-num strong {
+    display: block; color: var(--ink);
+    font-family: var(--serif); font-size: 26px;
+    font-weight: 400; margin-top: 4px; letter-spacing: -0.01em;
+  }
+  .tier-row .tier-content { font-size: 15px; color: var(--ink); }
+
+  .two-col {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 32px; margin: 24px 0;
+  }
+
+  /* Project tree */
+  .tree {
+    font-family: var(--mono); font-size: 13px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+  .tree .dir { color: var(--accent); }
+  .tree .file { color: var(--ink); }
+  .tree .comment { color: var(--ink-faint); }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border-soft);
+    padding: 60px 32px;
+    max-width: 1280px; margin: 0 auto;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--ink-faint); text-align: center;
+  }
+  footer .glyph {
+    font-family: var(--serif); font-size: 32px;
+    color: var(--accent); margin-bottom: 16px; font-style: italic;
+  }
+
+  @media (max-width: 900px) {
+    .two-col { grid-template-columns: 1fr; }
+    .layout { grid-template-columns: 1fr; padding: 0 24px; }
+    .toc { display: none; }
+    .hero { padding: 60px 24px 50px; }
+    .tier-row { grid-template-columns: 1fr; gap: 8px; }
+  }
+
+  .hero h1, .hero-lede, .verdict-card {
+    animation: fadeUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  .hero-lede { animation-delay: 0.15s; }
+  .verdict-card { animation-delay: 0.3s; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>BUILD GUIDE // SOTA HYBRID MEMORY</div>
+    <div>2026 · v2.0 · ANTHROPIC RESEARCH</div>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="hero-meta">
+    <span>DEEP RESEARCH · BUILD GUIDE</span>
+    <span class="sep"></span>
+    <span>May 2026</span>
+    <span class="sep"></span>
+    <span>~18 min read</span>
+  </div>
+  <h1>Build it. <em>Properly.</em><br><span class="strike">A SOTA hybrid memory<br>for your coding agents.</span></h1>
+  <p class="hero-lede">
+    No off-the-shelf wrappers. A custom, production-grade memory and knowledge-base service
+    you own end-to-end: <strong>hybrid retrieval (dense + sparse + ColBERT)</strong>, cross-encoder
+    reranking, importance-weighted memory layer, typed REST + SSE API ready for your own
+    frontend, and an MCP surface for Claude Code, Cursor, and Cline. Local. Free. Lightweight.
+    Built to last.
+  </p>
+
+  <div class="verdict-card">
+    <div class="verdict-label">The Verdict — Top of the Funnel</div>
+    <h2>Python 3.12 + FastAPI + Qdrant + BGE-M3 + bge-reranker-v2-m3 + FastMCP. SQLite for metadata and audit. uv for tooling. Roughly 1,500 lines of code from zero to a frontend-ready service.</h2>
+    <p>
+      Python loses on raw I/O throughput vs Node. It wins decisively on everything else that
+      matters here: every embedding model, reranker, parser, and the official MCP SDK are
+      Python-first by 6–12 months. FastAPI gives you auto-generated OpenAPI, which means your
+      frontend gets fully-typed TypeScript clients in one command.
+    </p>
+    <div class="stack-chips">
+      <span class="chip amber">Python 3.12</span>
+      <span class="chip amber">FastAPI</span>
+      <span class="chip">Qdrant</span>
+      <span class="chip">BGE-M3</span>
+      <span class="chip">bge-reranker-v2-m3</span>
+      <span class="chip">FastMCP</span>
+      <span class="chip">SQLite (WAL)</span>
+      <span class="chip">Pydantic v2</span>
+      <span class="chip">uv</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="toc">
+    <div class="toc-label">Contents</div>
+    <ol>
+      <li><a href="#brief">The build brief</a></li>
+      <li><a href="#language">Why Python (and not TS, Rust, Go)</a></li>
+      <li><a href="#architecture">Reference architecture</a></li>
+      <li><a href="#storage">Storage layer</a></li>
+      <li><a href="#embedding">Embedding layer</a></li>
+      <li><a href="#retrieval">Retrieval pipeline</a></li>
+      <li><a href="#memory">Memory dynamics</a></li>
+      <li><a href="#ingestion">Ingestion pipeline</a></li>
+      <li><a href="#api">API for your frontend</a></li>
+      <li><a href="#mcp">MCP server for agents</a></li>
+      <li><a href="#observability">Observability &amp; eval</a></li>
+      <li><a href="#structure">Project structure</a></li>
+      <li><a href="#corporate">Corporate-network notes</a></li>
+      <li><a href="#sequence">Build sequence</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- ============ 01 ============ -->
+    <section id="brief">
+      <div class="section-num">§ 01 — Brief</div>
+      <h2 class="sec-title">The build brief, sharpened.</h2>
+      <p>
+        You're not picking a product. You're building a <em>service</em>. It runs locally on a
+        MacBook Pro behind a corporate proxy, it costs nothing to run, and it does three jobs:
+      </p>
+      <ul>
+        <li>
+          <strong>Knowledge base.</strong> Ingest official docs, code snippets, audits, prompts,
+          ADRs, lessons-learned. Hybrid-searchable, payload-filterable, versioned.
+        </li>
+        <li>
+          <strong>Agent memory.</strong> Capture conversations with coding agents — what they
+          tried, what worked, what failed. Time-weighted. Importance-weighted. Deduplicated.
+        </li>
+        <li>
+          <strong>Two-faced API.</strong> A typed REST + SSE surface for the production-grade
+          HTML frontend <em>you</em> will build, and an MCP server surface for the coding agents
+          to read and write through.
+        </li>
+      </ul>
+      <p>
+        The frontend is out of scope for this report — that's your work. But the API is designed
+        so the frontend story is trivial: FastAPI emits OpenAPI 3.1, which generates fully-typed
+        TypeScript clients via <code>openapi-typescript</code> in one command. You get IDE
+        autocomplete on every endpoint, every field, every error response.
+      </p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section id="language">
+      <div class="section-num">§ 02 — Language</div>
+      <h2 class="sec-title">Why <em>Python</em>, and why decisively.</h2>
+      <p>
+        Four languages had to be considered: Python, TypeScript/Node, Go, Rust. The honest answer
+        is that Python wins, and not by a small margin. Here's the comparison stripped to what
+        matters for this exact workload:
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th>Python</th>
+              <th>TypeScript</th>
+              <th>Go</th>
+              <th>Rust</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Embedding models (BGE-M3, Qwen3, Nomic)</td>
+              <td><span class="pill win">native, all of them</span></td>
+              <td><span class="pill meh">transformers.js, slower</span></td>
+              <td><span class="pill no">FFI only</span></td>
+              <td><span class="pill no">FFI only</span></td>
+            </tr>
+            <tr>
+              <td>Cross-encoder rerankers</td>
+              <td><span class="pill win">native</span></td>
+              <td><span class="pill meh">limited</span></td>
+              <td><span class="pill no">FFI only</span></td>
+              <td><span class="pill meh">candle, growing</span></td>
+            </tr>
+            <tr>
+              <td>Document parsing (Docling, unstructured)</td>
+              <td><span class="pill win">first-class</span></td>
+              <td><span class="pill meh">limited</span></td>
+              <td><span class="pill no">no</span></td>
+              <td><span class="pill no">no</span></td>
+            </tr>
+            <tr>
+              <td>Qdrant client</td>
+              <td><span class="pill win">official, async</span></td>
+              <td><span class="pill win">official</span></td>
+              <td><span class="pill win">official</span></td>
+              <td><span class="pill win">official</span></td>
+            </tr>
+            <tr>
+              <td>Official MCP SDK</td>
+              <td><span class="pill win">+ FastMCP DX</span></td>
+              <td><span class="pill win">+ FastMCP-TS</span></td>
+              <td><span class="pill meh">community</span></td>
+              <td><span class="pill no">none</span></td>
+            </tr>
+            <tr>
+              <td>API framework</td>
+              <td><span class="pill win">FastAPI + OpenAPI 3.1</span></td>
+              <td><span class="pill win">Hono / Fastify</span></td>
+              <td><span class="pill ok">Echo / Gin</span></td>
+              <td><span class="pill ok">Axum</span></td>
+            </tr>
+            <tr>
+              <td>Raw HTTP throughput</td>
+              <td><span class="pill meh">~5k rps</span></td>
+              <td><span class="pill ok">~10k rps</span></td>
+              <td><span class="pill win">~40k rps</span></td>
+              <td><span class="pill win">~50k rps</span></td>
+            </tr>
+            <tr>
+              <td>Inference dominates request time</td>
+              <td colspan="4" style="color:var(--accent);font-style:italic">Yes — by 100–500×. Framework overhead is rounding error.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The three Python advantages that close it.</h3>
+
+      <h4>1 · The ML ecosystem is Python-native.</h4>
+      <p>
+        Every embedding and reranker you'd actually use ships first as PyTorch + a HuggingFace
+        config. <code>FlagEmbedding</code> (the official BGE-M3 library) only exists in Python.
+        <code>sentence-transformers</code> is Python. FastEmbed has bindings but is Python-led.
+        Document parsers — Docling, unstructured, LlamaIndex readers — are Python-first by months.
+        Choosing TypeScript here means writing wrappers around Python subprocesses. Don't.
+      </p>
+
+      <h4>2 · FastAPI + Pydantic v2 is best-in-class for a typed API.</h4>
+      <p>
+        FastAPI emits OpenAPI 3.1 from your Pydantic models with zero extra work. Your frontend
+        runs <code>npx openapi-typescript http://localhost:8000/openapi.json -o api.d.ts</code> and
+        gets full type definitions for every request, response, and error. Pydantic v2 (Rust core)
+        does field validation in microseconds. Async I/O is mature. Streaming responses (SSE) are
+        a one-liner. This isn't a Python apology; it's the right tool.
+      </p>
+
+      <h4>3 · FastMCP collapses the agent surface to decorators.</h4>
+      <p>
+        The official Python MCP SDK has been wrapped by FastMCP, which gives you a FastAPI-style
+        decorator API (<code>@mcp.tool()</code>) that infers the JSON schema from your type hints.
+        Most of the dependents on PyPI for <code>mcp</code> pull it in transitively through
+        FastMCP. A complete MCP server for this knowledge base is roughly 80 lines.
+      </p>
+
+      <div class="callout info">
+        <div class="callout-label">The Node case, fairly stated</div>
+        <p>
+          If your frontend is Next.js and you want one language end-to-end, the AI-first pattern in
+          2026 is <em>Python service + Node gateway</em>: keep the KB in Python, put a thin Node
+          gateway in front that adds auth, streaming UX, and shares types with the frontend. It
+          works. It's just two services to maintain instead of one.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section id="architecture">
+      <div class="section-num">§ 03 — Architecture</div>
+      <h2 class="sec-title">Reference architecture, top to bottom.</h2>
+      <p>
+        One Python process, two sidecars (Qdrant in Docker, optionally Ollama if you want a local
+        chat LLM in the loop). Each layer has one job. The seams are explicit so any layer can be
+        swapped without rewriting the others — including the reranker and the embedding model.
+      </p>
+
+      <div class="diagram">
+<pre>
+       <span class="accent">┌──────────────────────────────────────┐</span>     <span class="purple">┌──────────────────────────────────────┐</span>
+       <span class="accent">│   YOUR FRONTEND (HTML/JS, to build)  │</span>     <span class="purple">│ CODING AGENTS                        │</span>
+       <span class="accent">│   inspect · monitor · maintain · CRUD│</span>     <span class="purple">│ Claude Code / Cursor / Cline / VSC   │</span>
+       <span class="accent">└────────┬─────────────────────────────┘</span>     <span class="purple">└─────────────────────┬────────────────┘</span>
+                │ <span class="dim">REST + SSE (typed via OpenAPI)</span>                          │ <span class="dim">MCP (JSON-RPC over stdio)</span>
+                ▼                                                          ▼
+       <span class="ok">┌────────────────────────────────────────────────────────────────────────┐</span>
+       <span class="ok">│                       KB SERVICE (single Python process)               │</span>
+       <span class="ok">├────────────────────────────────────────────────────────────────────────┤</span>
+       <span class="ok">│  api/        FastAPI routes  — /documents /search /memories /stats…   │</span>
+       <span class="ok">│  mcp/        FastMCP server  — store_memory · find · search_hybrid     │</span>
+       <span class="ok">│  retrieval/  hybrid pipeline — dense + sparse + colbert → RRF → rerank│</span>
+       <span class="ok">│  memory/     dynamics layer  — importance · recency · dedup · consolid │</span>
+       <span class="ok">│  ingestion/  parsers/chunker — Docling, code-aware splitter, hashing   │</span>
+       <span class="ok">│  embed/      model adapters  — BGE-M3 (dense+sparse+colbert) in one    │</span>
+       <span class="ok">│  rerank/     cross-encoder   — bge-reranker-v2-m3                      │</span>
+       <span class="ok">│  store/      data access     — Qdrant client + SQLite (meta, audit)    │</span>
+       <span class="ok">│  obs/        metrics + audit — Prometheus exposition, structlog        │</span>
+       <span class="ok">└────────────────────┬──────────────────────────────────┬────────────────┘</span>
+                            │                                  │
+                            ▼                                  ▼
+                <span class="blue">┌──────────────────────────┐</span>          <span class="accent">┌──────────────────────────┐</span>
+                <span class="blue">│ QDRANT  (Docker, :6333) │</span>          <span class="accent">│ SQLite  (~/.kb/kb.db)    │</span>
+                <span class="blue">│  3 named vectors:        │</span>          <span class="accent">│  documents, chunks_meta, │</span>
+                <span class="blue">│   dense / sparse / cbrt  │</span>          <span class="accent">│  audit_log, eval_runs,   │</span>
+                <span class="blue">│  payload filters         │</span>          <span class="accent">│  ingest_jobs (queue)     │</span>
+                <span class="blue">│  snapshots → ~/.kb/snap  │</span>          <span class="accent">│  WAL mode, hourly backup │</span>
+                <span class="blue">└──────────────────────────┘</span>          <span class="accent">└──────────────────────────┘</span>
+</pre>
+      </div>
+
+      <h3>What lives where, and why.</h3>
+      <div class="two-col">
+        <div>
+          <h4>Qdrant — the heavy lifting</h4>
+          <p>
+            All the vectors and their payloads. Hybrid queries run server-side; you ship one
+            request and get a fused, filtered, ranked list back. Snapshots are a one-call API so
+            backups are trivial. Bind it to <code>127.0.0.1</code>.
+          </p>
+        </div>
+        <div>
+          <h4>SQLite — the source of truth</h4>
+          <p>
+            Document-level metadata (source, hash, version, owner), the <em>audit log</em> (every
+            write with who/when/why), the ingest queue, eval-run history. SQLite in WAL mode
+            handles thousands of writes/sec and the whole DB is one file to back up.
+          </p>
+        </div>
+      </div>
+      <p>
+        The dual-store rule: Qdrant is the index, SQLite is the system of record. If Qdrant gets
+        corrupted or you change embedding models, you reconstruct it from SQLite by re-embedding.
+        Never make Qdrant the only place a fact lives.
+      </p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section id="storage">
+      <div class="section-num">§ 04 — Storage</div>
+      <h2 class="sec-title">Storage layer: Qdrant collection schema &amp; SQLite tables.</h2>
+
+      <h3>The Qdrant collection</h3>
+      <p>
+        Three named vectors in one collection, with a rich payload schema. This is the
+        configuration that enables true hybrid search in a single query:
+      </p>
+
+      <pre data-lang="python"><code><span class="keyword">from</span> qdrant_client <span class="keyword">import</span> QdrantClient, models
+
+client = QdrantClient(url=<span class="string">"http://localhost:6333"</span>)
+
+client.create_collection(
+    collection_name=<span class="string">"kb"</span>,
+    vectors_config={
+        <span class="string">"dense"</span>: models.VectorParams(size=<span class="number">1024</span>, distance=models.Distance.COSINE),
+        <span class="string">"colbert"</span>: models.VectorParams(
+            size=<span class="number">128</span>,
+            distance=models.Distance.COSINE,
+            multivector_config=models.MultiVectorConfig(
+                comparator=models.MultiVectorComparator.MAX_SIM,
+            ),
+        ),
+    },
+    sparse_vectors_config={
+        <span class="string">"sparse"</span>: models.SparseVectorParams(modifier=models.Modifier.IDF),
+    },
+    <span class="comment"># on-disk for collections &gt; ~200k chunks; in-memory below</span>
+    optimizers_config=models.OptimizersConfigDiff(memmap_threshold=<span class="number">200_000</span>),
+    quantization_config=models.ScalarQuantization(
+        scalar=models.ScalarQuantizationConfig(type=models.ScalarType.INT8, always_ram=<span class="keyword">True</span>),
+    ),
+)
+
+<span class="comment"># Payload indices for fast filtering</span>
+<span class="keyword">for</span> field, schema <span class="keyword">in</span> [
+    (<span class="string">"project"</span>,  models.PayloadSchemaType.KEYWORD),
+    (<span class="string">"type"</span>,     models.PayloadSchemaType.KEYWORD),
+    (<span class="string">"tags"</span>,     models.PayloadSchemaType.KEYWORD),
+    (<span class="string">"created_at"</span>, models.PayloadSchemaType.DATETIME),
+    (<span class="string">"importance"</span>, models.PayloadSchemaType.FLOAT),
+    (<span class="string">"doc_id"</span>,   models.PayloadSchemaType.KEYWORD),
+]:
+    client.create_payload_index(<span class="string">"kb"</span>, field_name=field, field_schema=schema)
+</code></pre>
+
+      <h4>Why three named vectors</h4>
+      <ul>
+        <li><strong>dense</strong> (1024-dim) — BGE-M3 dense output; semantic recall.</li>
+        <li><strong>sparse</strong> (IDF-modified) — BGE-M3 sparse / lexical output; literal-token recall.</li>
+        <li><strong>colbert</strong> (multi-vector, 128-dim per token) — BGE-M3 ColBERT output; late-interaction precision.</li>
+      </ul>
+      <p>
+        Scalar INT8 quantization is non-optional at scale: it cuts memory ~4× with &lt;1% recall
+        loss. <code>memmap_threshold</code> pushes the index to disk past 200K chunks so you don't
+        eat RAM you need for the embedder.
+      </p>
+
+      <h3>The SQLite tables</h3>
+      <p>
+        Keep this small. Six tables cover everything. Use Pydantic models as the canonical
+        definition and SQLModel (or plain SQLAlchemy) to materialize them.
+      </p>
+
+      <pre data-lang="sql"><code><span class="keyword">CREATE TABLE</span> documents (
+  id          <span class="keyword">TEXT PRIMARY KEY</span>,            <span class="comment">-- ULID</span>
+  source_uri  <span class="keyword">TEXT NOT NULL</span>,              <span class="comment">-- file://… or url</span>
+  content_sha <span class="keyword">TEXT NOT NULL</span>,              <span class="comment">-- for idempotent ingest</span>
+  type        <span class="keyword">TEXT NOT NULL</span>,              <span class="comment">-- audit | conversation | doc | prompt | adr | lesson</span>
+  project     <span class="keyword">TEXT</span>,
+  title       <span class="keyword">TEXT</span>,
+  body        <span class="keyword">TEXT NOT NULL</span>,              <span class="comment">-- original full text</span>
+  meta_json   <span class="keyword">TEXT NOT NULL</span>,              <span class="comment">-- arbitrary user metadata</span>
+  created_at  <span class="keyword">TEXT NOT NULL</span>,
+  updated_at  <span class="keyword">TEXT NOT NULL</span>,
+  deleted_at  <span class="keyword">TEXT</span>                         <span class="comment">-- soft delete</span>
+);
+
+<span class="keyword">CREATE TABLE</span> chunks_meta (                    <span class="comment">-- mirrors Qdrant points 1:1</span>
+  point_id    <span class="keyword">TEXT PRIMARY KEY</span>,            <span class="comment">-- = Qdrant point id (UUID)</span>
+  document_id <span class="keyword">TEXT NOT NULL REFERENCES</span> documents(id),
+  chunk_index <span class="keyword">INTEGER NOT NULL</span>,
+  chunk_text  <span class="keyword">TEXT NOT NULL</span>,
+  embed_model <span class="keyword">TEXT NOT NULL</span>,              <span class="comment">-- BAAI/bge-m3</span>
+  embed_ver   <span class="keyword">TEXT NOT NULL</span>                <span class="comment">-- for re-embedding migrations</span>
+);
+
+<span class="keyword">CREATE TABLE</span> audit_log (
+  id        <span class="keyword">INTEGER PRIMARY KEY AUTOINCREMENT</span>,
+  ts        <span class="keyword">TEXT NOT NULL</span>,
+  actor     <span class="keyword">TEXT NOT NULL</span>,                <span class="comment">-- 'frontend' | 'mcp:claude-code' | 'ingest'</span>
+  action    <span class="keyword">TEXT NOT NULL</span>,                <span class="comment">-- create | update | delete | search</span>
+  target    <span class="keyword">TEXT</span>,                         <span class="comment">-- document_id or query string</span>
+  payload   <span class="keyword">TEXT</span>                          <span class="comment">-- JSON blob, full request</span>
+);
+
+<span class="keyword">CREATE TABLE</span> ingest_jobs (
+  id         <span class="keyword">TEXT PRIMARY KEY</span>,
+  status     <span class="keyword">TEXT NOT NULL</span>,               <span class="comment">-- queued | running | done | failed</span>
+  source     <span class="keyword">TEXT NOT NULL</span>,
+  progress   <span class="keyword">REAL DEFAULT 0</span>,
+  log        <span class="keyword">TEXT</span>,
+  created_at <span class="keyword">TEXT NOT NULL</span>,
+  finished_at <span class="keyword">TEXT</span>
+);
+
+<span class="keyword">CREATE TABLE</span> eval_runs (                     <span class="comment">-- regression-test retrieval quality</span>
+  id          <span class="keyword">TEXT PRIMARY KEY</span>,
+  ts          <span class="keyword">TEXT NOT NULL</span>,
+  embed_model <span class="keyword">TEXT</span>, rerank_model <span class="keyword">TEXT</span>,
+  config_json <span class="keyword">TEXT</span>,                       <span class="comment">-- top_k, rrf_k, alpha…</span>
+  results_json <span class="keyword">TEXT</span>                       <span class="comment">-- per-query recall@k, ndcg@k</span>
+);
+
+<span class="keyword">CREATE TABLE</span> settings (key <span class="keyword">TEXT PRIMARY KEY</span>, value <span class="keyword">TEXT NOT NULL</span>);
+
+<span class="keyword">PRAGMA</span> journal_mode = WAL;
+<span class="keyword">PRAGMA</span> synchronous = NORMAL;
+</code></pre>
+
+      <div class="callout">
+        <div class="callout-label">Idempotency, baked in</div>
+        <p>
+          <code>documents.content_sha</code> + <code>chunks_meta.embed_ver</code> let you skip
+          re-embedding unchanged content on every ingest run. Compute SHA-256 of the source body
+          before chunking; if it matches a non-deleted document, return its id and exit.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section id="embedding">
+      <div class="section-num">§ 05 — Embeddings</div>
+      <h2 class="sec-title">Embedding layer: BGE-M3, all three outputs at once.</h2>
+      <p>
+        The architectural punchline of BGE-M3 is that a single forward pass returns
+        <strong>dense, sparse (lexical), and ColBERT multi-vector</strong> representations. That's
+        what makes the three-named-vector Qdrant collection work without three separate model
+        invocations.
+      </p>
+
+      <pre data-lang="python"><code><span class="comment"># embed/bge_m3.py</span>
+<span class="keyword">from</span> FlagEmbedding <span class="keyword">import</span> BGEM3FlagModel
+<span class="keyword">from</span> qdrant_client <span class="keyword">import</span> models
+<span class="keyword">from</span> functools <span class="keyword">import</span> lru_cache
+
+<span class="decorator">@lru_cache</span>(maxsize=<span class="number">1</span>)
+<span class="keyword">def</span> get_model() <span class="keyword">-&gt;</span> BGEM3FlagModel:
+    <span class="comment"># use_fp16 cuts VRAM ~2× with negligible quality loss; auto-uses MPS on Apple Silicon</span>
+    <span class="keyword">return</span> BGEM3FlagModel(<span class="string">"BAAI/bge-m3"</span>, use_fp16=<span class="keyword">True</span>)
+
+<span class="keyword">def</span> embed_chunks(texts: <span class="keyword">list</span>[<span class="keyword">str</span>], batch_size: <span class="keyword">int</span> = <span class="number">12</span>) <span class="keyword">-&gt;</span> <span class="keyword">list</span>[<span class="keyword">dict</span>]:
+    out = get_model().encode(
+        texts,
+        batch_size=batch_size,
+        max_length=<span class="number">8192</span>,            <span class="comment"># BGE-M3 supports 8K tokens natively</span>
+        return_dense=<span class="keyword">True</span>,
+        return_sparse=<span class="keyword">True</span>,
+        return_colbert_vecs=<span class="keyword">True</span>,
+    )
+    <span class="keyword">return</span> [
+        {
+            <span class="string">"dense"</span>: out[<span class="string">"dense_vecs"</span>][i].tolist(),
+            <span class="string">"sparse"</span>: models.SparseVector(
+                indices=<span class="keyword">list</span>(out[<span class="string">"lexical_weights"</span>][i].keys()),
+                values=<span class="keyword">list</span>(out[<span class="string">"lexical_weights"</span>][i].values()),
+            ),
+            <span class="string">"colbert"</span>: out[<span class="string">"colbert_vecs"</span>][i].tolist(),
+        }
+        <span class="keyword">for</span> i <span class="keyword">in</span> <span class="keyword">range</span>(<span class="keyword">len</span>(texts))
+    ]
+</code></pre>
+
+      <h4>Why not Qwen3-Embedding or Nomic v2 here?</h4>
+      <p>
+        Qwen3-Embedding-8B scores higher on raw MTEB (70.58 multilingual, 80.68 on MTEB Code).
+        It's a candidate for a code-search-specialist variant of the system. But it only emits
+        dense vectors. To do hybrid with it you'd run BM25 on the side via <code>rank_bm25</code>
+        or build your own SPLADE pipeline — that's two more moving parts, two more models in RAM,
+        and a custom fusion implementation. BGE-M3 collapses that to one forward pass per chunk.
+      </p>
+
+      <h4>Performance budget on a MacBook Pro M-series</h4>
+      <ul>
+        <li>BGE-M3 (fp16, MPS): ~40–60 chunks/sec at batch 12, 500-token chunks.</li>
+        <li>RAM cost: ~2.5 GB resident.</li>
+        <li>100K-chunk corpus indexes in ~30–40 minutes — one coffee.</li>
+      </ul>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section id="retrieval">
+      <div class="section-num">§ 06 — Retrieval</div>
+      <h2 class="sec-title">The retrieval pipeline, in one server-side call.</h2>
+      <p>
+        The 2026 SOTA pattern, validated in the corrective-RAG benchmark paper and across Qdrant /
+        Elastic / Zep production deployments, is three stages: <strong>multi-recall → RRF fusion →
+        cross-encoder rerank</strong>. Qdrant fuses for you; you only run the reranker.
+      </p>
+
+      <div class="diagram">
+<pre>
+            <span class="accent">QUERY</span> ("how do we handle 429s in the SDK")
+              │
+              ▼
+   <span class="ok">embed once with BGE-M3</span> → {dense, sparse, colbert}
+              │
+              ▼
+   <span class="blue">┌──────────────────────────────────────────────────────────────┐</span>
+   <span class="blue">│ Qdrant query_points  (one HTTP call)                         │</span>
+   <span class="blue">│  prefetch: dense(top 100), sparse(top 100), colbert(top 50)  │</span>
+   <span class="blue">│  fusion:   RRF (k=60)                                        │</span>
+   <span class="blue">│  filter:   project="my-api" AND type IN (doc,best-practice)  │</span>
+   <span class="blue">│  limit:    25 fused candidates                               │</span>
+   <span class="blue">└──────────────────────────────────────────────────────────────┘</span>
+              │
+              ▼
+   <span class="accent">cross-encoder rerank</span> — bge-reranker-v2-m3 over (query, doc) pairs
+              │
+              ▼
+   <span class="accent">apply memory-dynamics boost</span> — importance + recency (§ 07)
+              │
+              ▼
+   <span class="ok">TOP 5</span> → coding agent / frontend
+</pre>
+      </div>
+
+      <pre data-lang="python"><code><span class="comment"># retrieval/hybrid.py</span>
+<span class="keyword">from</span> qdrant_client <span class="keyword">import</span> models
+<span class="keyword">from</span> FlagEmbedding <span class="keyword">import</span> FlagReranker
+
+reranker = FlagReranker(<span class="string">"BAAI/bge-reranker-v2-m3"</span>, use_fp16=<span class="keyword">True</span>)
+
+<span class="keyword">def</span> hybrid_search(
+    query: <span class="keyword">str</span>,
+    *,
+    project: <span class="keyword">str</span> | <span class="keyword">None</span> = <span class="keyword">None</span>,
+    types: <span class="keyword">list</span>[<span class="keyword">str</span>] | <span class="keyword">None</span> = <span class="keyword">None</span>,
+    top_k: <span class="keyword">int</span> = <span class="number">5</span>,
+    candidates: <span class="keyword">int</span> = <span class="number">25</span>,
+) <span class="keyword">-&gt;</span> <span class="keyword">list</span>[<span class="keyword">dict</span>]:
+    qv = embed_chunks([query])[<span class="number">0</span>]
+    flt = _build_filter(project=project, types=types)
+
+    fused = client.query_points(
+        collection_name=<span class="string">"kb"</span>,
+        prefetch=[
+            models.Prefetch(query=qv[<span class="string">"dense"</span>],   using=<span class="string">"dense"</span>,   limit=<span class="number">100</span>, filter=flt),
+            models.Prefetch(query=qv[<span class="string">"sparse"</span>],  using=<span class="string">"sparse"</span>,  limit=<span class="number">100</span>, filter=flt),
+            models.Prefetch(query=qv[<span class="string">"colbert"</span>], using=<span class="string">"colbert"</span>, limit=<span class="number">50</span>,  filter=flt),
+        ],
+        query=models.FusionQuery(fusion=models.Fusion.RRF),
+        query_filter=flt,
+        limit=candidates,
+        with_payload=<span class="keyword">True</span>,
+    ).points
+
+    <span class="comment"># Stage 3 — cross-encoder rerank</span>
+    pairs  = [(query, p.payload[<span class="string">"text"</span>]) <span class="keyword">for</span> p <span class="keyword">in</span> fused]
+    scores = reranker.compute_score(pairs, normalize=<span class="keyword">True</span>)
+
+    <span class="comment"># Stage 4 — memory-dynamics boost (importance × recency); see § 07</span>
+    blended = [(_blend(p, s), p) <span class="keyword">for</span> p, s <span class="keyword">in</span> <span class="keyword">zip</span>(fused, scores)]
+    blended.sort(key=<span class="keyword">lambda</span> x: -x[<span class="number">0</span>])
+
+    <span class="keyword">return</span> [_to_result(s, p) <span class="keyword">for</span> s, p <span class="keyword">in</span> blended[:top_k]]
+</code></pre>
+
+      <p>
+        Always return scores from every stage in the API response —
+        <code>dense_rank</code>, <code>sparse_rank</code>, <code>fused_score</code>,
+        <code>rerank_score</code>, <code>final_score</code>. Your frontend needs them for the
+        "why did this rank here?" explainability view, and your eval harness needs them to
+        diagnose regressions when you swap models.
+      </p>
+
+      <div class="callout">
+        <div class="callout-label">Tunables that actually matter</div>
+        <p>
+          RRF <code>k</code>: default 60, but published 2026 benchmarks find <code>k=10</code>
+          better on enterprise corpora — it weights top hits more. Reranker depth: 25–50 candidates
+          is the sweet spot. Below 20, the reranker can't recover from poor recall; above 50,
+          latency rises faster than quality.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section id="memory">
+      <div class="section-num">§ 07 — Memory dynamics</div>
+      <h2 class="sec-title">What turns a KB into a <em>memory</em>.</h2>
+      <p>
+        A retrieval-augmented knowledge base treats every document as equal. A memory system
+        treats them as <strong>weighted by importance, faded by time, and consolidated when
+        redundant</strong>. The 2026 production patterns (Mem0, Letta/MemGPT, Zep/Graphiti) all
+        encode some version of this. You should encode the minimal version.
+      </p>
+
+      <h3>Three dynamics, expressed as payload fields.</h3>
+
+      <div class="tier-row">
+        <div class="tier-num">Dynamic 01<strong>Importance</strong></div>
+        <div class="tier-content">
+          A float in [0, 1] set on write. <strong>Best practices</strong> and <strong>audit
+          findings</strong> get 0.9. <strong>Official doc excerpts</strong> get 0.7. <strong>Raw
+          conversation chunks</strong> start at 0.3 and can be promoted by an explicit
+          <em>"this was useful"</em> signal from the agent or user. Stored as a payload float,
+          indexed, used as a search-time multiplier.
+        </div>
+      </div>
+
+      <div class="tier-row">
+        <div class="tier-num">Dynamic 02<strong>Recency</strong></div>
+        <div class="tier-content">
+          A monotonic decay applied at query time, not at write. Cheap form:
+          <code>recency = exp(-Δdays / half_life)</code> with half-life of 90 days for docs, 30
+          for conversations. Don't decay best-practices and ADRs — they're meant to be timeless.
+          Compute server-side from <code>created_at</code>; no re-indexing ever needed.
+        </div>
+      </div>
+
+      <div class="tier-row">
+        <div class="tier-num">Dynamic 03<strong>Consolidation</strong></div>
+        <div class="tier-content">
+          A background job that runs nightly: find clusters of near-duplicate chunks (cosine &gt;
+          0.95 on dense), summarize each cluster into one canonical chunk, soft-delete the
+          originals, link them via <code>superseded_by</code> in the audit log. Keeps the index
+          lean and prevents the same fact from outvoting itself five times in retrieval.
+        </div>
+      </div>
+
+      <h4>The blend formula</h4>
+      <pre data-lang="python"><code><span class="keyword">def</span> _blend(point, rerank_score: <span class="keyword">float</span>) <span class="keyword">-&gt;</span> <span class="keyword">float</span>:
+    importance = point.payload.get(<span class="string">"importance"</span>, <span class="number">0.5</span>)
+    type_      = point.payload.get(<span class="string">"type"</span>, <span class="string">"doc"</span>)
+    age_days   = (utcnow() - parse(point.payload[<span class="string">"created_at"</span>])).days
+    half_life  = <span class="number">30</span> <span class="keyword">if</span> type_ == <span class="string">"conversation"</span> <span class="keyword">else</span> <span class="number">90</span>
+    recency    = <span class="number">1.0</span> <span class="keyword">if</span> type_ <span class="keyword">in</span> {<span class="string">"best-practice"</span>, <span class="string">"adr"</span>} <span class="keyword">else</span> math.exp(-age_days / half_life)
+
+    <span class="comment"># Weighted blend — keep rerank dominant, let dynamics nudge ties</span>
+    <span class="keyword">return</span> <span class="number">0.70</span> * rerank_score + <span class="number">0.20</span> * importance + <span class="number">0.10</span> * recency
+</code></pre>
+
+      <div class="callout info">
+        <div class="callout-label">Should you add a graph?</div>
+        <p>
+          Graphiti / Zep build a temporal knowledge graph for "what was true when" queries. It
+          measurably wins on multi-hop benchmarks (Mem0g hits 68.4% on LOCOMO) but adds substantial
+          complexity and requires LLM calls at ingest time. For personal coding-agent memory the
+          flat hybrid + importance/recency model is enough. Add a graph only if you find yourself
+          needing relational queries that vector + payload filters can't answer.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section id="ingestion">
+      <div class="section-num">§ 08 — Ingestion</div>
+      <h2 class="sec-title">Ingestion pipeline.</h2>
+      <p>
+        Three classes of input dominate this use case: <strong>conversations</strong> (markdown
+        export from Claude Code / Cursor), <strong>official docs</strong> (PDFs, HTML, markdown),
+        and <strong>code-adjacent artifacts</strong> (ADRs, README, audit reports, prompts).
+        Different parsers, different chunkers.
+      </p>
+
+      <div class="stack-grid">
+        <div class="stack-card">
+          <div class="layer">PDF / DOCX / HTML</div>
+          <h4>Docling</h4>
+          <div class="tag">IBM, MIT-licensed</div>
+          <p>Layout-aware. Preserves tables and code blocks. Outputs clean Markdown. The current
+          best-in-class open parser for messy docs.</p>
+        </div>
+        <div class="stack-card">
+          <div class="layer">Markdown / text</div>
+          <h4>Heading-aware splitter</h4>
+          <div class="tag">~100 LOC, no deps</div>
+          <p>Respect H1/H2/H3 boundaries. Don't break in the middle of a code fence. 500–800
+          tokens per chunk, 80-token overlap.</p>
+        </div>
+        <div class="stack-card">
+          <div class="layer">Source code</div>
+          <h4>tree-sitter chunker</h4>
+          <div class="tag">function/class-level</div>
+          <p>Split at AST boundaries. Keep imports + signature with each chunk. Re-attach
+          docstring to body. Massively improves code retrieval quality.</p>
+        </div>
+        <div class="stack-card">
+          <div class="layer">Conversations</div>
+          <h4>Turn-pair chunker</h4>
+          <div class="tag">custom</div>
+          <p>One chunk = one user message + the agent's response, plus the prior 1–2 turns as
+          context. Tag with conversation id so you can reconstruct the session.</p>
+        </div>
+      </div>
+
+      <h4>The ingest loop, idempotent</h4>
+      <pre data-lang="python"><code><span class="keyword">def</span> ingest(source: Source, body: <span class="keyword">str</span>, meta: <span class="keyword">dict</span>) <span class="keyword">-&gt;</span> IngestResult:
+    sha = sha256(body.encode()).hexdigest()
+    <span class="comment"># Skip if unchanged</span>
+    existing = db.find_document_by_sha(sha)
+    <span class="keyword">if</span> existing <span class="keyword">and not</span> existing.deleted_at:
+        <span class="keyword">return</span> IngestResult(status=<span class="string">"skipped"</span>, document_id=existing.id)
+
+    doc = db.upsert_document(source=source, sha=sha, body=body, meta=meta)
+    chunks = chunk_for(source.type, body)
+    embeddings = embed_chunks([c.text <span class="keyword">for</span> c <span class="keyword">in</span> chunks])
+
+    points = [
+        models.PointStruct(
+            id=<span class="keyword">str</span>(uuid7()),
+            vector={<span class="string">"dense"</span>: e[<span class="string">"dense"</span>], <span class="string">"colbert"</span>: e[<span class="string">"colbert"</span>]},
+            sparse_vectors={<span class="string">"sparse"</span>: e[<span class="string">"sparse"</span>]},
+            payload={
+                <span class="string">"text"</span>: c.text, <span class="string">"doc_id"</span>: doc.id,
+                <span class="string">"project"</span>: meta.get(<span class="string">"project"</span>), <span class="string">"type"</span>: source.type,
+                <span class="string">"importance"</span>: default_importance(source.type),
+                <span class="string">"created_at"</span>: utcnow().isoformat(),
+                <span class="string">"tags"</span>: meta.get(<span class="string">"tags"</span>, []),
+            },
+        )
+        <span class="keyword">for</span> c, e <span class="keyword">in</span> <span class="keyword">zip</span>(chunks, embeddings)
+    ]
+    qdrant.upsert(<span class="string">"kb"</span>, points=points)
+    db.upsert_chunks_meta(doc.id, points)
+    db.audit(<span class="string">"ingest"</span>, target=doc.id, payload={<span class="string">"chunks"</span>: <span class="keyword">len</span>(points)})
+    <span class="keyword">return</span> IngestResult(status=<span class="string">"ingested"</span>, document_id=doc.id, chunks=<span class="keyword">len</span>(points))
+</code></pre>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section id="api">
+      <div class="section-num">§ 09 — API</div>
+      <h2 class="sec-title">The API surface your frontend will consume.</h2>
+      <p>
+        Designed so a typed frontend client falls out of one OpenAPI dump. Pydantic models are the
+        canonical schemas — they drive request validation, response serialization, OpenAPI
+        generation, and your TypeScript types. Define them once, get the rest for free.
+      </p>
+
+      <h3>The endpoints</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Path</th><th>Method</th><th>Purpose</th><th>Notes for frontend</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>/documents</code></td><td>GET</td><td>List, paginate, filter by project/type/tags</td><td>Cursor pagination; supports <code>?q=</code> for fuzzy title match</td></tr>
+            <tr><td><code>/documents</code></td><td>POST</td><td>Ingest one document inline</td><td>Returns 202 + job id if &gt;50 KB; else 201 with chunks count</td></tr>
+            <tr><td><code>/documents/{id}</code></td><td>GET / PATCH / DELETE</td><td>CRUD a document (soft delete)</td><td>PATCH on importance/tags is hot — no re-embedding</td></tr>
+            <tr><td><code>/chunks/{point_id}</code></td><td>GET</td><td>Inspect a single chunk with all vectors stripped</td><td>For the "why did this match?" detail view</td></tr>
+            <tr><td><code>/search</code></td><td>POST</td><td>Hybrid search with explainable scores</td><td>Returns dense_rank, sparse_rank, fused_score, rerank_score, final_score</td></tr>
+            <tr><td><code>/search/dry-run</code></td><td>POST</td><td>Same as /search but skip rerank, show all 100 candidates</td><td>For the search-tuning UI</td></tr>
+            <tr><td><code>/collections/stats</code></td><td>GET</td><td>Counts, sizes, by-type breakdown, index health</td><td>Dashboard data</td></tr>
+            <tr><td><code>/ingest/jobs</code></td><td>GET / POST</td><td>List or start an ingest job</td><td>Long-running; pair with /ingest/events</td></tr>
+            <tr><td><code>/ingest/events</code></td><td>GET (SSE)</td><td>Real-time progress for active jobs</td><td>Server-Sent Events; reconnects gracefully</td></tr>
+            <tr><td><code>/audit</code></td><td>GET</td><td>Audit log query — actor, action, target, time range</td><td>Cursor pagination</td></tr>
+            <tr><td><code>/eval/runs</code></td><td>GET / POST</td><td>Run or browse retrieval-quality evals</td><td>Returns recall@k, ndcg@k per query</td></tr>
+            <tr><td><code>/healthz</code> · <code>/readyz</code></td><td>GET</td><td>Liveness + readiness</td><td>For your status indicator</td></tr>
+            <tr><td><code>/metrics</code></td><td>GET</td><td>Prometheus exposition</td><td>Embed-latency, search-latency, queue depth, error counts</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Two Pydantic models, the whole API in your head</h3>
+      <pre data-lang="python"><code><span class="comment"># api/models.py — what the frontend will see, typed end-to-end</span>
+<span class="keyword">from</span> pydantic <span class="keyword">import</span> BaseModel, Field
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+<span class="keyword">from</span> typing <span class="keyword">import</span> Literal
+
+DocType = Literal[<span class="string">"audit"</span>, <span class="string">"conversation"</span>, <span class="string">"doc"</span>, <span class="string">"prompt"</span>, <span class="string">"adr"</span>, <span class="string">"lesson"</span>, <span class="string">"best-practice"</span>]
+
+<span class="keyword">class</span> SearchRequest(BaseModel):
+    query: <span class="keyword">str</span>
+    project: <span class="keyword">str</span> | <span class="keyword">None</span> = <span class="keyword">None</span>
+    types: <span class="keyword">list</span>[DocType] | <span class="keyword">None</span> = <span class="keyword">None</span>
+    tags: <span class="keyword">list</span>[<span class="keyword">str</span>] | <span class="keyword">None</span> = <span class="keyword">None</span>
+    top_k: <span class="keyword">int</span> = Field(<span class="number">5</span>, ge=<span class="number">1</span>, le=<span class="number">50</span>)
+    rerank: <span class="keyword">bool</span> = <span class="keyword">True</span>
+    explain: <span class="keyword">bool</span> = <span class="keyword">False</span>
+
+<span class="keyword">class</span> SearchHit(BaseModel):
+    point_id: <span class="keyword">str</span>
+    document_id: <span class="keyword">str</span>
+    text: <span class="keyword">str</span>
+    type: DocType
+    project: <span class="keyword">str</span> | <span class="keyword">None</span>
+    tags: <span class="keyword">list</span>[<span class="keyword">str</span>]
+    created_at: datetime
+    importance: <span class="keyword">float</span>
+    dense_rank: <span class="keyword">int</span> | <span class="keyword">None</span> = <span class="keyword">None</span>
+    sparse_rank: <span class="keyword">int</span> | <span class="keyword">None</span> = <span class="keyword">None</span>
+    fused_score: <span class="keyword">float</span>
+    rerank_score: <span class="keyword">float</span> | <span class="keyword">None</span> = <span class="keyword">None</span>
+    final_score: <span class="keyword">float</span>
+
+<span class="keyword">class</span> SearchResponse(BaseModel):
+    hits: <span class="keyword">list</span>[SearchHit]
+    took_ms: <span class="keyword">int</span>
+    query_id: <span class="keyword">str</span>          <span class="comment"># for telemetry / "was this helpful?" callback</span>
+</code></pre>
+
+      <pre data-lang="python"><code><span class="comment"># api/routes/search.py</span>
+<span class="keyword">from</span> fastapi <span class="keyword">import</span> APIRouter
+
+router = APIRouter()
+
+<span class="decorator">@router</span>.post(<span class="string">"/search"</span>, response_model=SearchResponse)
+<span class="keyword">async def</span> search(req: SearchRequest) <span class="keyword">-&gt;</span> SearchResponse:
+    <span class="keyword">with</span> timed() <span class="keyword">as</span> t:
+        hits = retrieval.hybrid_search(
+            req.query, project=req.project, types=req.types,
+            tags=req.tags, top_k=req.top_k, rerank=req.rerank,
+        )
+    query_id = audit.log_search(req, hits)
+    <span class="keyword">return</span> SearchResponse(hits=hits, took_ms=t.ms, query_id=query_id)
+</code></pre>
+
+      <h3>Frontend code generation, one command</h3>
+      <pre data-lang="bash"><code><span class="comment"># In your frontend project</span>
+<span class="keyword">npx</span> openapi-typescript http://localhost:8000/openapi.json -o src/api.d.ts
+
+<span class="comment"># Now every fetch is fully typed:</span>
+<span class="keyword">import</span> <span class="keyword">type</span> { paths } <span class="keyword">from</span> <span class="string">"./api"</span>;
+<span class="keyword">type</span> SearchResponse = paths[<span class="string">"/search"</span>][<span class="string">"post"</span>][<span class="string">"responses"</span>][<span class="string">"200"</span>][<span class="string">"content"</span>][<span class="string">"application/json"</span>];
+</code></pre>
+
+      <p>
+        Pair with <code>@hey-api/openapi-ts</code> if you want a ready-made fetch client instead of
+        bare types. Either way, the frontend never invents a field name; it reads from the same
+        Pydantic schema your backend already enforces.
+      </p>
+    </section>
+
+    <!-- ============ 10 ============ -->
+    <section id="mcp">
+      <div class="section-num">§ 10 — MCP</div>
+      <h2 class="sec-title">MCP server for coding agents.</h2>
+      <p>
+        Coding agents talk to the same service through MCP. Run it as a separate entry point that
+        imports the same retrieval and ingestion modules — zero code duplication. <strong>FastMCP
+        2</strong> turns this into decorators, and tool descriptions become the agent's
+        instructions.
+      </p>
+
+      <pre data-lang="python"><code><span class="comment"># mcp/server.py — entry: `uv run kb-mcp` (registered in your pyproject)</span>
+<span class="keyword">from</span> mcp.server.fastmcp <span class="keyword">import</span> FastMCP
+<span class="keyword">from</span> kb.retrieval <span class="keyword">import</span> hybrid_search
+<span class="keyword">from</span> kb.ingestion <span class="keyword">import</span> ingest
+<span class="keyword">from</span> kb.api.models <span class="keyword">import</span> SearchHit
+
+mcp = FastMCP(<span class="string">"kb"</span>)
+
+<span class="decorator">@mcp</span>.tool()
+<span class="keyword">def</span> find(query: <span class="keyword">str</span>, project: <span class="keyword">str</span> | <span class="keyword">None</span> = <span class="keyword">None</span>, top_k: <span class="keyword">int</span> = <span class="number">5</span>) <span class="keyword">-&gt;</span> <span class="keyword">list</span>[<span class="keyword">dict</span>]:
+    <span class="string">"""Search the personal knowledge base for prior conversations, audits,
+    best practices, ADRs, and official-doc excerpts.
+
+    Use this BEFORE writing new code that touches existing functionality.
+    Use this BEFORE answering questions about project conventions.
+    Always pass `project` if you know which project you're working in.
+    """</span>
+    hits = hybrid_search(query, project=project, top_k=top_k)
+    <span class="keyword">return</span> [h.model_dump() <span class="keyword">for</span> h <span class="keyword">in</span> hits]
+
+<span class="decorator">@mcp</span>.tool()
+<span class="keyword">def</span> remember(
+    information: <span class="keyword">str</span>,
+    type: <span class="keyword">str</span> = <span class="string">"lesson"</span>,
+    project: <span class="keyword">str</span> | <span class="keyword">None</span> = <span class="keyword">None</span>,
+    tags: <span class="keyword">list</span>[<span class="keyword">str</span>] = [],
+    importance: <span class="keyword">float</span> = <span class="number">0.5</span>,
+) <span class="keyword">-&gt;</span> <span class="keyword">dict</span>:
+    <span class="string">"""Store a lesson, best practice, prompt, or audit finding for future retrieval.
+    Use this when you discover something worth remembering across sessions:
+    a non-obvious bug fix, a project convention, a working prompt pattern.
+    Set importance &gt; 0.7 only for facts you want surfaced often.
+    """</span>
+    res = ingest(
+        Source(type=type, uri=<span class="string">f"mcp://agent/</span>{utcnow().isoformat()}<span class="string">"</span>),
+        body=information,
+        meta={<span class="string">"project"</span>: project, <span class="string">"tags"</span>: tags, <span class="string">"importance"</span>: importance},
+    )
+    <span class="keyword">return</span> {<span class="string">"document_id"</span>: res.document_id, <span class="string">"status"</span>: res.status}
+
+<span class="keyword">if</span> __name__ == <span class="string">"__main__"</span>:
+    mcp.run()  <span class="comment"># stdio transport for Claude Code / Cursor / Cline</span>
+</code></pre>
+
+      <p>
+        Wire it into Claude Code by adding to <code>~/.claude/settings.json</code>:
+      </p>
+      <pre data-lang="json"><code>{
+  <span class="string">"mcpServers"</span>: {
+    <span class="string">"kb"</span>: { <span class="string">"command"</span>: <span class="string">"uv"</span>, <span class="string">"args"</span>: [<span class="string">"run"</span>, <span class="string">"--directory"</span>, <span class="string">"/path/to/kb"</span>, <span class="string">"kb-mcp"</span>] }
+  }
+}
+</code></pre>
+
+      <div class="callout">
+        <div class="callout-label">Why tool docstrings matter</div>
+        <p>
+          The agent reads the docstring to decide <em>when</em> to call your tool. Write it as
+          instructions, not documentation. "Use this BEFORE…" beats "This function returns…".
+          When you see your agent forget to use the memory, the fix is almost always in the
+          docstring, not the code.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 11 ============ -->
+    <section id="observability">
+      <div class="section-num">§ 11 — Observability</div>
+      <h2 class="sec-title">Observability, monitoring &amp; eval.</h2>
+      <p>
+        Production-grade means you can answer three questions at any time: <em>what is the
+        service doing right now?</em>, <em>what did it do last week?</em>, and <em>did my last
+        change make retrieval better or worse?</em>
+      </p>
+
+      <h4>1 · Live metrics — Prometheus exposition</h4>
+      <p>
+        Use <code>prometheus-client</code>. Expose at <code>/metrics</code>. The frontend dashboard
+        can read it directly or via a tiny <code>/stats/snapshot</code> aggregation endpoint.
+      </p>
+      <ul>
+        <li><code>kb_search_seconds</code> — histogram, labels: <code>rerank=true|false</code>, <code>project</code>.</li>
+        <li><code>kb_embed_seconds</code> — histogram, labels: <code>kind=query|doc</code>.</li>
+        <li><code>kb_ingest_chunks_total</code> — counter, labels: <code>source_type</code>.</li>
+        <li><code>kb_qdrant_collection_points</code> — gauge.</li>
+        <li><code>kb_errors_total</code> — counter, labels: <code>route</code>, <code>kind</code>.</li>
+      </ul>
+
+      <h4>2 · Audit log — append-only, queryable</h4>
+      <p>
+        Every write hits <code>audit_log</code> with actor (frontend / mcp:client-name /
+        ingest-job-id), action, target, and the full payload. Powers your frontend's "activity
+        feed" and "who changed this?" view. SQLite handles 10K writes/sec; you'll never feel it.
+      </p>
+
+      <h4>3 · Eval harness — regression-test search quality</h4>
+      <p>
+        The single biggest risk in a memory system is silent quality regression. You swap embedding
+        models, change RRF k, tweak the blend formula — and search gets quietly worse. A small
+        golden-set eval catches it.
+      </p>
+      <ul>
+        <li>Maintain <code>~/.kb/evals/golden.jsonl</code> — 30–100 (query, expected_doc_id) pairs you curate over time.</li>
+        <li><code>POST /eval/runs</code> runs the full set, records recall@5 and nDCG@5 per query, stores the result in <code>eval_runs</code>.</li>
+        <li>Your frontend renders this as a sparkline with current vs previous run; <strong>any change &gt;3pp warrants investigation</strong>.</li>
+      </ul>
+
+      <div class="callout info">
+        <div class="callout-label">Structured logs, please</div>
+        <p>
+          Use <code>structlog</code> with JSON output. Every log line carries
+          <code>query_id</code> (from the search response) or <code>ingest_job_id</code>. When a
+          user reports "this search felt off", they paste the query_id and you can reconstruct
+          every decision the pipeline made.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 12 ============ -->
+    <section id="structure">
+      <div class="section-num">§ 12 — Project layout</div>
+      <h2 class="sec-title">Recommended project structure.</h2>
+      <p>
+        One repo, one Python package, two entry points (HTTP API + MCP server). Managed with
+        <code>uv</code> for instant dependency resolution.
+      </p>
+
+      <div class="tree">
+<span class="dir">kb/</span>
+├─ <span class="file">pyproject.toml</span>            <span class="comment"># [project.scripts] kb-api, kb-mcp, kb-ingest</span>
+├─ <span class="file">README.md</span>
+├─ <span class="file">docker-compose.yml</span>        <span class="comment"># qdrant only; the app runs natively for hot-reload</span>
+├─ <span class="file">.env.example</span>
+├─ <span class="dir">src/kb/</span>
+│  ├─ <span class="file">__init__.py</span>
+│  ├─ <span class="file">config.py</span>              <span class="comment"># pydantic-settings; reads ~/.kb/config.toml</span>
+│  ├─ <span class="dir">store/</span>
+│  │  ├─ <span class="file">qdrant.py</span>           <span class="comment"># client, collection bootstrap, snapshots</span>
+│  │  ├─ <span class="file">sqlite.py</span>           <span class="comment"># connection, migrations</span>
+│  │  └─ <span class="file">models.py</span>           <span class="comment"># SQLModel tables (mirror Pydantic)</span>
+│  ├─ <span class="dir">embed/</span>
+│  │  ├─ <span class="file">bge_m3.py</span>           <span class="comment"># the embedder; 60-line module</span>
+│  │  └─ <span class="file">interface.py</span>        <span class="comment"># Protocol so you can swap models</span>
+│  ├─ <span class="dir">rerank/</span>
+│  │  └─ <span class="file">bge_v2_m3.py</span>
+│  ├─ <span class="dir">retrieval/</span>
+│  │  ├─ <span class="file">hybrid.py</span>           <span class="comment"># the §06 query function</span>
+│  │  └─ <span class="file">blend.py</span>            <span class="comment"># memory-dynamics scoring</span>
+│  ├─ <span class="dir">ingestion/</span>
+│  │  ├─ <span class="file">parsers.py</span>          <span class="comment"># docling, html2md, markdown, tree-sitter</span>
+│  │  ├─ <span class="file">chunkers.py</span>         <span class="comment"># by type</span>
+│  │  └─ <span class="file">pipeline.py</span>         <span class="comment"># the idempotent ingest loop</span>
+│  ├─ <span class="dir">memory/</span>
+│  │  └─ <span class="file">consolidator.py</span>     <span class="comment"># nightly dedup + summarize job</span>
+│  ├─ <span class="dir">api/</span>
+│  │  ├─ <span class="file">app.py</span>              <span class="comment"># FastAPI() + middleware + CORS for your frontend</span>
+│  │  ├─ <span class="file">models.py</span>           <span class="comment"># Pydantic request/response (the API contract)</span>
+│  │  └─ <span class="dir">routes/</span>
+│  │     ├─ <span class="file">documents.py</span>
+│  │     ├─ <span class="file">search.py</span>
+│  │     ├─ <span class="file">ingest.py</span>          <span class="comment"># includes SSE event stream</span>
+│  │     ├─ <span class="file">audit.py</span>
+│  │     ├─ <span class="file">stats.py</span>
+│  │     └─ <span class="file">eval.py</span>
+│  ├─ <span class="dir">mcp/</span>
+│  │  └─ <span class="file">server.py</span>           <span class="comment"># FastMCP tools (the §10 file)</span>
+│  └─ <span class="dir">obs/</span>
+│     ├─ <span class="file">metrics.py</span>          <span class="comment"># prometheus-client</span>
+│     ├─ <span class="file">audit.py</span>            <span class="comment"># append-only writer</span>
+│     └─ <span class="file">logging.py</span>          <span class="comment"># structlog config</span>
+├─ <span class="dir">tests/</span>
+│  ├─ <span class="file">test_hybrid.py</span>
+│  ├─ <span class="file">test_ingest_idempotent.py</span>
+│  ├─ <span class="file">test_blend.py</span>
+│  └─ <span class="dir">eval/</span>
+│     └─ <span class="file">golden.jsonl</span>
+└─ <span class="dir">scripts/</span>
+   ├─ <span class="file">bootstrap.sh</span>           <span class="comment"># docker compose up qdrant + create collection</span>
+   └─ <span class="file">backup.py</span>              <span class="comment"># qdrant snapshot + sqlite cp to ~/.kb/backups/</span>
+      </div>
+
+      <h4>pyproject.toml — the dependency floor</h4>
+      <pre data-lang="toml"><code>[project]
+name = <span class="string">"kb"</span>
+requires-python = <span class="string">"&gt;=3.12"</span>
+dependencies = [
+  <span class="string">"fastapi&gt;=0.115"</span>,
+  <span class="string">"uvicorn[standard]&gt;=0.32"</span>,
+  <span class="string">"pydantic&gt;=2.9"</span>, <span class="string">"pydantic-settings&gt;=2.6"</span>,
+  <span class="string">"qdrant-client&gt;=1.12"</span>,
+  <span class="string">"FlagEmbedding&gt;=1.3"</span>,        <span class="comment"># BGE-M3 + bge-reranker-v2-m3</span>
+  <span class="string">"docling&gt;=2.0"</span>,
+  <span class="string">"tree-sitter&gt;=0.23"</span>,
+  <span class="string">"sqlmodel&gt;=0.0.22"</span>,
+  <span class="string">"structlog&gt;=24.4"</span>,
+  <span class="string">"prometheus-client&gt;=0.21"</span>,
+  <span class="string">"sse-starlette&gt;=2.1"</span>,
+  <span class="string">"mcp&gt;=1.0"</span>, <span class="string">"fastmcp&gt;=2.0"</span>,
+  <span class="string">"uuid-utils&gt;=0.9"</span>,             <span class="comment"># UUIDv7 for time-ordered ids</span>
+]
+
+[project.scripts]
+kb-api    = <span class="string">"kb.api.app:run"</span>
+kb-mcp    = <span class="string">"kb.mcp.server:main"</span>
+kb-ingest = <span class="string">"kb.ingestion.cli:main"</span>
+</code></pre>
+    </section>
+
+    <!-- ============ 13 ============ -->
+    <section id="corporate">
+      <div class="section-num">§ 13 — Corp network</div>
+      <h2 class="sec-title">Corporate-network checklist.</h2>
+      <ol>
+        <li>Set <code>HTTPS_PROXY</code> in your shell and inside Docker. <em>Never</em> set <code>HTTP_PROXY</code> — it breaks Ollama's localhost client.</li>
+        <li>Export one CA bundle path and reuse it everywhere: <code>SSL_CERT_FILE</code> (Python/uv/requests), <code>REQUESTS_CA_BUNDLE</code>, <code>CURL_CA_BUNDLE</code>, <code>NODE_EXTRA_CA_CERTS</code> (for your frontend tooling).</li>
+        <li>Pre-warm the HuggingFace cache from a machine with reach: <code>HF_HUB_OFFLINE=1</code> after copying <code>~/.cache/huggingface</code> over.</li>
+        <li>Bind Qdrant to <code>127.0.0.1:6333</code>, never <code>0.0.0.0</code> — keeps it off the office network.</li>
+        <li>Mirror <code>qdrant/qdrant:latest</code> to your internal Docker registry if Docker Hub is blocked; pin the SHA in <code>docker-compose.yml</code>.</li>
+        <li>Use <code>uv pip install --index-url</code> with your internal PyPI mirror; check it in via <code>uv.lock</code>.</li>
+        <li>For your frontend dev server, add the FastAPI origin to CORS allow-list. In dev, <code>http://localhost:5173</code>; in "production" on the same Mac, <code>http://localhost:8000</code> serves both.</li>
+      </ol>
+    </section>
+
+    <!-- ============ 14 ============ -->
+    <section id="sequence">
+      <div class="section-num">§ 14 — Build sequence</div>
+      <h2 class="sec-title">The build sequence, two-week version.</h2>
+
+      <div class="tier-row">
+        <div class="tier-num">Day 1–2<strong>Foundations</strong></div>
+        <div class="tier-content">
+          <code>uv init kb</code>. Docker-compose up Qdrant. Bootstrap the collection with three
+          named vectors and payload indices. Get BGE-M3 loading and emitting all three vector
+          types. Get one chunk written and read back. SQLite migrations in place.
+        </div>
+      </div>
+      <div class="tier-row">
+        <div class="tier-num">Day 3–4<strong>Retrieval</strong></div>
+        <div class="tier-content">
+          Implement the hybrid search function. Add the reranker. Add the memory-dynamics blend.
+          Smoke-test against 100 hand-written chunks. Pin recall@5 ≥ 0.9 on your golden set
+          before moving on.
+        </div>
+      </div>
+      <div class="tier-row">
+        <div class="tier-num">Day 5–7<strong>API + ingestion</strong></div>
+        <div class="tier-content">
+          FastAPI app, routes, Pydantic models. Docling + markdown + tree-sitter chunkers. The
+          idempotent ingest pipeline. SSE for ingest progress. Confirm OpenAPI 3.1 spec generates
+          and TypeScript types come out clean.
+        </div>
+      </div>
+      <div class="tier-row">
+        <div class="tier-num">Day 8–9<strong>MCP + observability</strong></div>
+        <div class="tier-content">
+          FastMCP server with <code>find</code> and <code>remember</code> tools. Prometheus
+          metrics. Audit log writer. Wire into Claude Code; verify the agent calls
+          <code>find</code> spontaneously when context is missing.
+        </div>
+      </div>
+      <div class="tier-row">
+        <div class="tier-num">Day 10<strong>Eval harness</strong></div>
+        <div class="tier-content">
+          Build the golden-set runner. Persist results to <code>eval_runs</code>. Now you can
+          tune blend weights and reranker depth with data, not intuition.
+        </div>
+      </div>
+      <div class="tier-row">
+        <div class="tier-num">Day 11–12<strong>Consolidator + backups</strong></div>
+        <div class="tier-content">
+          Nightly dedup job. Qdrant snapshot script. SQLite hourly copy to
+          <code>~/.kb/backups/</code>. Now you can lose your laptop and recover.
+        </div>
+      </div>
+      <div class="tier-row">
+        <div class="tier-num">Day 13–14<strong>Hardening</strong></div>
+        <div class="tier-content">
+          API token middleware. Per-route rate limiting. Structured logging with query_id
+          propagation. Read-only mode for ingest windows. Now hand it off to your frontend.
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-label">The shopping list, one last time</div>
+        <p>
+          <strong>Language:</strong> Python 3.12 ·
+          <strong>API:</strong> FastAPI + Pydantic v2 ·
+          <strong>MCP:</strong> FastMCP 2 ·
+          <strong>Vector store:</strong> Qdrant (Docker, <code>127.0.0.1</code>) ·
+          <strong>Embedder:</strong> BGE-M3 via FlagEmbedding (dense + sparse + ColBERT) ·
+          <strong>Reranker:</strong> bge-reranker-v2-m3 ·
+          <strong>Metadata store:</strong> SQLite (WAL) ·
+          <strong>Parsers:</strong> Docling + tree-sitter ·
+          <strong>Observability:</strong> prometheus-client + structlog ·
+          <strong>Tooling:</strong> uv ·
+          <strong>License posture:</strong> Apache 2.0 / MIT throughout.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="glyph">§</div>
+  <div>Compiled by Claude · 27 May 2026 · For your build</div>
+  <div style="margin-top:6px; color:var(--ink-faint)">Architecture survives 18 months. Tactics survive a quarter. Re-verify model names and versions before you commit.</div>
+</footer>
+
+</body>
+</html>
