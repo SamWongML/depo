@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prompt Vault — Implementation Spec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1814;
+    --ink-soft: #4d4a44;
+    --ink-mute: #8a857b;
+    --ink-faint: #b7b1a3;
+    --paper: #f3eee5;
+    --paper-2: #ebe5d8;
+    --paper-3: #ddd5c2;
+    --paper-warm: #fbf7ed;
+    --rule: #c8c0ad;
+    --rule-soft: #d8d2bf;
+    --accent: #b8533a;        /* terracotta */
+    --accent-soft: #d4a896;
+    --sage: #6a7a5e;
+    --slate: #4a5b6a;
+    --gold: #a07c2b;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-weight: 300;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.6;
+    font-size: 15.5px;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(184, 83, 58, 0.18); }
+
+  /* ========== Layout shell ========== */
+  .doc {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 32px;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 60px;
+  }
+  @media (max-width: 900px) {
+    .doc { grid-template-columns: 1fr; gap: 0; padding: 0 22px; }
+    .toc { display: none; }
+  }
+
+  /* ========== Sticky TOC ========== */
+  .toc {
+    position: sticky;
+    top: 40px;
+    align-self: start;
+    height: calc(100vh - 80px);
+    padding-top: 80px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+  .toc-label {
+    color: var(--accent);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    font-size: 10px;
+  }
+  .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: t; }
+  .toc li { counter-increment: t; margin: 9px 0; }
+  .toc a {
+    color: var(--ink-mute);
+    text-decoration: none;
+    display: block;
+    line-height: 1.45;
+    transition: color .25s ease, transform .25s ease;
+    padding-left: 22px;
+    position: relative;
+  }
+  .toc a::before {
+    content: counter(t, decimal-leading-zero);
+    position: absolute; left: 0;
+    color: var(--ink-faint);
+  }
+  .toc a:hover, .toc a.active {
+    color: var(--ink);
+    transform: translateX(2px);
+  }
+  .toc a.active::before { color: var(--accent); }
+
+  /* ========== Main content ========== */
+  main {
+    padding: 80px 0 140px;
+    max-width: 760px;
+  }
+
+  /* ========== Hero ========== */
+  .hero { margin-bottom: 80px; }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 22px;
+    display: flex; gap: 12px; align-items: center;
+  }
+  .eyebrow::before {
+    content: ''; width: 22px; height: 1px;
+    background: var(--accent);
+  }
+  h1.title {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(44px, 6.5vw, 72px);
+    line-height: 1.0;
+    letter-spacing: -0.025em;
+    margin: 0 0 24px;
+    color: var(--ink);
+  }
+  h1.title em {
+    font-style: italic;
+    color: var(--accent);
+    font-variation-settings: 'opsz' 144;
+    font-weight: 300;
+  }
+  .lede {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    max-width: 580px;
+    font-variation-settings: 'opsz' 36;
+  }
+  .hero-meta {
+    margin-top: 38px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    display: flex; gap: 32px; flex-wrap: wrap;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.04em;
+  }
+  .hero-meta b {
+    display: block;
+    color: var(--ink);
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 400;
+    margin-bottom: 4px;
+    font-variation-settings: 'opsz' 9;
+    letter-spacing: 0;
+  }
+
+  /* ========== Sections ========== */
+  section {
+    margin: 80px 0;
+    scroll-margin-top: 40px;
+  }
+  .sec-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 400;
+    font-size: clamp(32px, 4vw, 44px);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 0 0 28px;
+    color: var(--ink);
+  }
+  h2 em { font-style: italic; color: var(--accent); font-weight: 400; }
+  h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 22px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin: 38px 0 12px;
+    color: var(--ink);
+  }
+  h4 {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-soft);
+    margin: 28px 0 10px;
+  }
+  p { margin: 0 0 16px; }
+  p + p { margin-top: 0; }
+  strong { font-weight: 500; color: var(--ink); }
+  em { font-style: italic; }
+  a:not(.toc a) {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent-soft);
+    transition: border-color .25s ease;
+  }
+  a:not(.toc a):hover { border-bottom-color: var(--accent); }
+
+  /* ========== Pull-quote / verdict ========== */
+  .verdict {
+    margin: 32px 0;
+    padding: 24px 28px;
+    background: var(--paper-warm);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+  }
+  .verdict .verdict-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .verdict p {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 400;
+    color: var(--ink);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  /* ========== Tables ========== */
+  .stack-table, .api-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 22px 0;
+    font-size: 14px;
+  }
+  .stack-table th, .stack-table td,
+  .api-table th, .api-table td {
+    text-align: left;
+    padding: 14px 14px 14px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  .stack-table th, .api-table th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 10px;
+  }
+  .stack-table td:first-child {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    color: var(--ink);
+    width: 28%;
+    font-weight: 500;
+  }
+  .stack-table td:nth-child(2) {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    width: 24%;
+  }
+  .stack-table td:last-child {
+    color: var(--ink-soft);
+    font-size: 13.5px;
+  }
+  .api-table .method {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--paper);
+    background: var(--ink);
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+    letter-spacing: 0.08em;
+  }
+  .api-table .method.get    { background: var(--slate); }
+  .api-table .method.post   { background: var(--sage); }
+  .api-table .method.patch  { background: var(--gold); }
+  .api-table .method.delete { background: var(--accent); }
+  .api-table td:nth-child(2) {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--ink);
+    width: 36%;
+  }
+  .api-table td:last-child {
+    color: var(--ink-soft);
+    font-size: 13.5px;
+  }
+
+  /* ========== Code blocks ========== */
+  .code {
+    margin: 22px 0;
+    background: #1c1a16;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--ink);
+  }
+  .code-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 14px;
+    background: #25221c;
+    border-bottom: 1px solid #3a352c;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #8a857b;
+  }
+  .code-head .lang { color: var(--accent-soft); }
+  .code pre {
+    margin: 0;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #e8e1d0;
+  }
+  .code .c { color: #7d8a64; }       /* comment */
+  .code .k { color: #d4a896; }       /* keyword */
+  .code .s { color: #c8a96e; }       /* string */
+  .code .n { color: #9ab0c4; }       /* number / fn name */
+  .code .t { color: #b8a36e; }       /* type */
+  .code .p { color: #b7b1a3; }       /* punctuation */
+
+  /* Inline code */
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.86em;
+    background: var(--paper-3);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  /* ========== Architecture diagram ========== */
+  .arch {
+    margin: 28px 0;
+    padding: 32px;
+    background: var(--paper-warm);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    position: relative;
+  }
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 22px;
+    align-items: stretch;
+  }
+  @media (max-width: 680px) { .arch-grid { grid-template-columns: 1fr; } }
+  .arch-col {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .arch-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .arch-box {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 12px 14px;
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--ink-soft);
+    text-align: center;
+    transition: transform .3s ease, box-shadow .3s ease;
+  }
+  .arch-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px -14px rgba(80, 60, 30, 0.25);
+  }
+  .arch-box b {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    color: var(--ink);
+    font-size: 15px;
+    display: block;
+    margin-bottom: 3px;
+  }
+  .arch-box.center {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .arch-box.center b { color: var(--paper); }
+  .arch-flow {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px dashed var(--rule);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    text-align: center;
+    line-height: 1.7;
+  }
+  .arch-flow span { color: var(--accent); }
+
+  /* ========== Lists ========== */
+  ul.refined {
+    list-style: none; padding: 0; margin: 16px 0;
+  }
+  ul.refined li {
+    padding-left: 24px;
+    position: relative;
+    margin-bottom: 10px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+  ul.refined li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 12px;
+    width: 12px; height: 1px;
+    background: var(--accent);
+  }
+  ul.refined li b { color: var(--ink); }
+
+  /* ========== Decision cards ========== */
+  .decisions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 22px 0;
+  }
+  @media (max-width: 680px) { .decisions { grid-template-columns: 1fr; } }
+  .decision {
+    padding: 22px;
+    background: var(--paper-warm);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    position: relative;
+    transition: transform .35s cubic-bezier(.2,.7,.25,1), box-shadow .35s ease;
+  }
+  .decision::before {
+    content: ''; position: absolute; top: -1px; left: 22px; right: 22px;
+    height: 2px; background: var(--accent);
+  }
+  .decision:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 36px -20px rgba(80, 60, 30, 0.3);
+  }
+  .decision .q {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .decision .a {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    color: var(--ink);
+    margin-bottom: 8px;
+    line-height: 1.3;
+    font-weight: 400;
+  }
+  .decision .why {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  /* ========== Roadmap ========== */
+  .roadmap {
+    margin: 22px 0;
+    position: relative;
+  }
+  .roadmap::before {
+    content: ''; position: absolute;
+    left: 8px; top: 14px; bottom: 14px;
+    width: 1px; background: var(--rule);
+  }
+  .milestone {
+    display: grid; grid-template-columns: 100px 1fr;
+    gap: 22px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    position: relative;
+  }
+  .milestone:last-child { border-bottom: none; }
+  .milestone::before {
+    content: ''; position: absolute;
+    left: 4px; top: 26px;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 2px solid var(--accent);
+  }
+  .ms-label {
+    padding-left: 28px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+    padding-top: 2px;
+  }
+  .ms-label small { display: block; color: var(--ink-mute); margin-top: 2px; letter-spacing: 0.02em; text-transform: none; font-size: 10px; }
+  .ms-body h4 { margin: 0 0 6px; color: var(--ink); font-family: 'Fraunces', serif; font-size: 18px; text-transform: none; letter-spacing: -0.01em; font-weight: 500; }
+  .ms-body p { font-size: 13.5px; color: var(--ink-soft); margin: 0; }
+
+  /* ========== Footer ========== */
+  footer {
+    margin-top: 100px;
+    padding-top: 40px;
+    border-top: 1px solid var(--rule);
+    display: flex; justify-content: space-between; align-items: baseline;
+    flex-wrap: wrap; gap: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.04em;
+  }
+  footer b {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    color: var(--accent);
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  /* ========== Fade-in on scroll ========== */
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.25,1);
+  }
+  .reveal.in { opacity: 1; transform: none; }
+</style>
+</head>
+<body>
+
+<div class="doc">
+
+  <aside class="toc" id="toc">
+    <div class="toc-label">Contents</div>
+    <ol>
+      <li><a href="#shape">The shape of it</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#stack">The stack, decided</a></li>
+      <li><a href="#data">Data model</a></li>
+      <li><a href="#search">Search</a></li>
+      <li><a href="#ingestion">Ingestion</a></li>
+      <li><a href="#api">API surface</a></li>
+      <li><a href="#frontend">Frontend &amp; motion</a></li>
+      <li><a href="#build">Build &amp; ship</a></li>
+      <li><a href="#roadmap">Roadmap</a></li>
+      <li><a href="#tradeoffs">Trade-offs</a></li>
+    </ol>
+  </aside>
+
+  <main>
+
+    <header class="hero reveal">
+      <div class="eyebrow">Implementation Spec · v1.0</div>
+      <h1 class="title">Prompt&nbsp;Vault — a calm room for <em>every prompt you've written</em>.</h1>
+      <p class="lede">A single local binary that captures, searches, and serves your prompts from the web, your Codex sessions, and your OpenCode history — with the editorial feel of a well-kept library and the speed of a terminal.</p>
+      <div class="hero-meta">
+        <div><b>~12 MB</b>single binary</div>
+        <div><b>0 ms</b>cold search</div>
+        <div><b>4</b>ingestion sources</div>
+        <div><b>1</b>file to install</div>
+      </div>
+    </header>
+
+    <!-- ============ 1. SHAPE ============ -->
+    <section id="shape" class="reveal">
+      <div class="sec-num">01 — Premise</div>
+      <h2>The <em>shape</em> of it.</h2>
+      <p>The product is one thing: a personal library of prompts you actually use, opened by a keystroke. Everything else serves that one thing.</p>
+      <p>It runs as a single Go binary. Double-click, and it opens a browser tab pointed at <code>localhost:7777</code>. The whole UI is HTML — embedded in the binary — styled in the Atelier aesthetic. There is no signup, no cloud, no telemetry. Your prompts live in one SQLite file in <code>~/.prompt-vault/</code>. You can grep it.</p>
+      <p>Three forces drive every decision:</p>
+      <ul class="refined">
+        <li><b>Locality.</b> Your prompts never leave your machine. The binary reads your Codex/OpenCode history directly. The web ingest is a bookmarklet, not a service.</li>
+        <li><b>Speed.</b> Search must feel instant — under 30 ms from keypress to repaint. SQLite FTS5 on the server, MiniSearch in the browser for typing feedback.</li>
+        <li><b>Calm.</b> The Atelier design language is non-negotiable: warm paper, restrained motion, Fraunces for type. The tool should feel like a reading room, not a dashboard.</li>
+      </ul>
+      <div class="verdict">
+        <div class="verdict-label">The wedge</div>
+        <p>No existing tool combines local ingestion of Codex/OpenCode session history with a personal-library UX. Langfuse is for teams, PromptHub charges per seat, Chrome extensions can't read your shell. This sits in the gap.</p>
+      </div>
+    </section>
+
+    <!-- ============ 2. ARCHITECTURE ============ -->
+    <section id="architecture" class="reveal">
+      <div class="sec-num">02 — Architecture</div>
+      <h2>One binary. Three planes.</h2>
+      <p>The whole system is a tiny three-tier on your machine: the filesystem you already have, a Go process that indexes and serves, and a browser tab that renders.</p>
+      <div class="arch">
+        <div class="arch-grid">
+          <div class="arch-col">
+            <div class="arch-label">Sources</div>
+            <div class="arch-box"><b>~/.codex/sessions</b>JSONL rollouts</div>
+            <div class="arch-box"><b>~/.local/share/opencode</b>per-message JSON</div>
+            <div class="arch-box"><b>Web</b>via bookmarklet</div>
+            <div class="arch-box"><b>You</b>typed in-app</div>
+          </div>
+          <div class="arch-col">
+            <div class="arch-label">Core</div>
+            <div class="arch-box center"><b>prompt-vault</b>Go 1.22+ binary<br>~12 MB, no CGO</div>
+            <div class="arch-box"><b>SQLite + FTS5</b>~/.prompt-vault/vault.db</div>
+            <div class="arch-box"><b>HTTP @ :7777</b>net/http stdlib</div>
+            <div class="arch-box"><b>embed.FS</b>HTML/CSS/JS inside binary</div>
+          </div>
+          <div class="arch-col">
+            <div class="arch-label">Surface</div>
+            <div class="arch-box"><b>Browser tab</b>Atelier UI</div>
+            <div class="arch-box"><b>MiniSearch</b>instant typing feedback</div>
+            <div class="arch-box"><b>Alpine.js</b>reactivity, 15 KB</div>
+            <div class="arch-box"><b>Clipboard API</b>copy-to-clipboard</div>
+          </div>
+        </div>
+        <div class="arch-flow">
+          filesystem &nbsp;<span>→</span>&nbsp; ingester &nbsp;<span>→</span>&nbsp; SQLite (with FTS5 triggers) &nbsp;<span>→</span>&nbsp; HTTP/JSON &nbsp;<span>→</span>&nbsp; MiniSearch index &nbsp;<span>→</span>&nbsp; you press <code>⌘C</code>
+        </div>
+      </div>
+      <p>The binary is the only thing the user installs. It opens a port, embeds the assets, manages the DB, watches your Codex/OpenCode dirs for new sessions, and shuts down clean on <code>Ctrl-C</code>.</p>
+    </section>
+
+    <!-- ============ 3. STACK ============ -->
+    <section id="stack" class="reveal">
+      <div class="sec-num">03 — The stack</div>
+      <h2>Every pick has a <em>reason</em>.</h2>
+      <table class="stack-table">
+        <thead>
+          <tr><th>Layer</th><th>Pick</th><th>Why this, not the alternative</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Language</td>
+            <td>Go 1.22+</td>
+            <td>Single static binary, trivial cross-compile, stdlib HTTP is enough. Rust/Tauri ships smaller (~5 MB) but the Rust learning tax doesn't pay back here.</td>
+          </tr>
+          <tr>
+            <td>HTTP</td>
+            <td>net/http + chi</td>
+            <td>Stdlib for everything; <code>chi</code> only for middleware and path params. No Gin, no Echo — they bring more than we need.</td>
+          </tr>
+          <tr>
+            <td>Database</td>
+            <td>modernc.org/sqlite</td>
+            <td>Pure-Go SQLite — <strong>no CGO</strong>, so cross-compile stays one-shot. ~15% slower than mattn/go-sqlite3 but irrelevant at this scale.</td>
+          </tr>
+          <tr>
+            <td>Search (server)</td>
+            <td>SQLite FTS5</td>
+            <td>BM25 ranking, porter stemming, trigram tokenizer for code-like queries. Built into SQLite. GitHub Copilot CLI uses the same pattern.</td>
+          </tr>
+          <tr>
+            <td>Search (client)</td>
+            <td>MiniSearch 7.x</td>
+            <td>~7 KB gzipped, inverted index, fuzzy + prefix + field boost. Gives instant typing feedback before the server query lands. Fuse.js is slower at scale; FlexSearch's API is fiddlier; Orama is overkill.</td>
+          </tr>
+          <tr>
+            <td>File watching</td>
+            <td>fsnotify</td>
+            <td>OS-native watchers for Codex/OpenCode dirs so new sessions appear in the Inbox without polling.</td>
+          </tr>
+          <tr>
+            <td>Asset embed</td>
+            <td>go:embed</td>
+            <td>Stdlib. Bundles <code>index.html</code>, CSS, JS, fonts directly into the binary.</td>
+          </tr>
+          <tr>
+            <td>Reactivity</td>
+            <td>Alpine.js 3.x</td>
+            <td>~15 KB, declarative <code>x-data</code>/<code>x-show</code>, no build step. React/Vue would force tooling we don't want.</td>
+          </tr>
+          <tr>
+            <td>Type</td>
+            <td>Fraunces + IBM Plex Sans + Mono</td>
+            <td>Self-host the WOFF2 files (one weight each) so the app works offline. Total: ~120 KB.</td>
+          </tr>
+          <tr>
+            <td>Icons</td>
+            <td>Lucide (inline SVG)</td>
+            <td>Inline only the ~12 icons we use. No icon-font weight.</td>
+          </tr>
+          <tr>
+            <td>Build</td>
+            <td>Makefile + GOOS/GOARCH</td>
+            <td>One <code>make release</code> produces darwin/linux/windows × amd64/arm64.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>What we considered and rejected</h3>
+      <div class="decisions">
+        <div class="decision">
+          <div class="q">Go terminal app?</div>
+          <div class="a">No.</div>
+          <div class="why">TUIs can't do the calm animations and serif typography that make this product distinct. Copy/paste UX is also worse in a terminal.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Tauri?</div>
+          <div class="a">Tempting, not now.</div>
+          <div class="why">~5 MB binary and a native window are real wins, but Rust ownership rules slow the first ship. Revisit once the Go version is stable.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Electron?</div>
+          <div class="a">No.</div>
+          <div class="why">100+ MB binary, hundreds of MB RAM idle. Violates the "lightweight" requirement.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Pure browser app (no backend)?</div>
+          <div class="a">No.</div>
+          <div class="why">Browsers can't read <code>~/.codex/sessions</code>. The whole product hinges on local file access.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Vector / semantic search?</div>
+          <div class="a">Not yet.</div>
+          <div class="why">FTS5 with porter stemming covers 95% of "find that prompt about refactoring." Add embeddings only if recall becomes a real complaint.</div>
+        </div>
+        <div class="decision">
+          <div class="q">React + Vite?</div>
+          <div class="a">No.</div>
+          <div class="why">Build step ruins the "single binary, edit a file, refresh" feedback loop. Alpine.js is the right tool for an app this size.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 4. DATA MODEL ============ -->
+    <section id="data" class="reveal">
+      <div class="sec-num">04 — Data model</div>
+      <h2>One table, one virtual table, three triggers.</h2>
+      <p>SQLite holds everything. The schema is deliberately flat — there is no <code>tags</code> join table because tags are queried as JSON arrays and matched via FTS, not relationally.</p>
+      <div class="code">
+        <div class="code-head"><span>internal/store/schema.sql</span><span class="lang">SQL</span></div>
+<pre><span class="c">-- Core table. id is a ULID so it sorts lexicographically by time.</span>
+<span class="k">CREATE TABLE</span> prompts (
+  id          <span class="t">TEXT</span>    <span class="k">PRIMARY KEY</span>,
+  title       <span class="t">TEXT</span>    <span class="k">NOT NULL</span>,
+  body        <span class="t">TEXT</span>    <span class="k">NOT NULL</span>,
+  tags        <span class="t">TEXT</span>    <span class="k">NOT NULL DEFAULT</span> <span class="s">'[]'</span>,    <span class="c">-- JSON array</span>
+  source      <span class="t">TEXT</span>    <span class="k">NOT NULL</span>,                  <span class="c">-- manual|web|codex|opencode</span>
+  source_ref  <span class="t">TEXT</span>,                                <span class="c">-- URL, session id, file path</span>
+  uses        <span class="t">INTEGER</span> <span class="k">NOT NULL DEFAULT</span> <span class="n">0</span>,
+  pinned      <span class="t">INTEGER</span> <span class="k">NOT NULL DEFAULT</span> <span class="n">0</span>,
+  archived    <span class="t">INTEGER</span> <span class="k">NOT NULL DEFAULT</span> <span class="n">0</span>,
+  body_hash   <span class="t">TEXT</span>    <span class="k">NOT NULL</span>,                  <span class="c">-- SHA-256 prefix for dedup</span>
+  created_at  <span class="t">INTEGER</span> <span class="k">NOT NULL</span>,                  <span class="c">-- unix seconds</span>
+  updated_at  <span class="t">INTEGER</span> <span class="k">NOT NULL</span>
+);
+<span class="k">CREATE INDEX</span> idx_prompts_source   <span class="k">ON</span> prompts(source);
+<span class="k">CREATE INDEX</span> idx_prompts_updated  <span class="k">ON</span> prompts(updated_at <span class="k">DESC</span>);
+<span class="k">CREATE UNIQUE INDEX</span> uq_body_hash  <span class="k">ON</span> prompts(body_hash);
+
+<span class="c">-- Inbox: staged candidates from Codex/OpenCode ingest, awaiting user decision.</span>
+<span class="k">CREATE TABLE</span> inbox (
+  id          <span class="t">TEXT</span>    <span class="k">PRIMARY KEY</span>,
+  body        <span class="t">TEXT</span>    <span class="k">NOT NULL</span>,
+  source      <span class="t">TEXT</span>    <span class="k">NOT NULL</span>,
+  source_ref  <span class="t">TEXT</span>    <span class="k">NOT NULL</span>,
+  body_hash   <span class="t">TEXT</span>    <span class="k">NOT NULL UNIQUE</span>,
+  detected_at <span class="t">INTEGER</span> <span class="k">NOT NULL</span>
+);
+
+<span class="c">-- FTS5 virtual table — kept in sync via triggers below.</span>
+<span class="k">CREATE VIRTUAL TABLE</span> prompts_fts <span class="k">USING</span> fts5(
+  title, body, tags,
+  content=<span class="s">'prompts'</span>, content_rowid=<span class="s">'rowid'</span>,
+  tokenize=<span class="s">'porter unicode61 remove_diacritics 2'</span>
+);
+
+<span class="k">CREATE TRIGGER</span> prompts_ai <span class="k">AFTER INSERT ON</span> prompts <span class="k">BEGIN</span>
+  <span class="k">INSERT INTO</span> prompts_fts(rowid, title, body, tags)
+  <span class="k">VALUES</span> (new.rowid, new.title, new.body, new.tags);
+<span class="k">END</span>;
+<span class="k">CREATE TRIGGER</span> prompts_au <span class="k">AFTER UPDATE ON</span> prompts <span class="k">BEGIN</span>
+  <span class="k">INSERT INTO</span> prompts_fts(prompts_fts, rowid, title, body, tags)
+  <span class="k">VALUES</span> (<span class="s">'delete'</span>, old.rowid, old.title, old.body, old.tags);
+  <span class="k">INSERT INTO</span> prompts_fts(rowid, title, body, tags)
+  <span class="k">VALUES</span> (new.rowid, new.title, new.body, new.tags);
+<span class="k">END</span>;
+<span class="k">CREATE TRIGGER</span> prompts_ad <span class="k">AFTER DELETE ON</span> prompts <span class="k">BEGIN</span>
+  <span class="k">INSERT INTO</span> prompts_fts(prompts_fts, rowid, title, body, tags)
+  <span class="k">VALUES</span> (<span class="s">'delete'</span>, old.rowid, old.title, old.body, old.tags);
+<span class="k">END</span>;</pre>
+      </div>
+
+      <h3>Why this shape</h3>
+      <ul class="refined">
+        <li><b>ULID for id</b> sorts by creation time without a separate index. Useful for "most recent" without an <code>ORDER BY created_at</code>.</li>
+        <li><b>body_hash UNIQUE</b> dedupes silently. If you ingest the same Codex prompt twice across two scans, only one row exists.</li>
+        <li><b>tags as JSON</b> not a join. Faceted filtering happens client-side on the loaded set; full-text covers tag search via FTS.</li>
+        <li><b>porter + unicode61 + remove_diacritics</b> handles English stemming, mixed scripts, and accented input. For polyglot users add the <code>trigram</code> tokenizer later.</li>
+      </ul>
+    </section>
+
+    <!-- ============ 5. SEARCH ============ -->
+    <section id="search" class="reveal">
+      <div class="sec-num">05 — Search</div>
+      <h2>Two layers, one feeling: <em>instant</em>.</h2>
+      <p>The illusion of instantaneous search comes from doing two things at once. The browser shows fuzzy matches the moment you type, while the server runs the proper BM25 query in the background and reconciles when it lands.</p>
+
+      <h4>Layer 1 — client (MiniSearch)</h4>
+      <p>On load, the app fetches the most-recent 500 prompts (<code>GET /api/prompts?limit=500</code>) and builds a MiniSearch index. Every keystroke runs against that index — under 5 ms typical. The index lives in memory; no IndexedDB.</p>
+      <div class="code">
+        <div class="code-head"><span>web/app.js · client index</span><span class="lang">JS</span></div>
+<pre><span class="k">import</span> MiniSearch <span class="k">from</span> <span class="s">'./vendor/minisearch.min.js'</span>;
+
+<span class="k">const</span> idx = <span class="k">new</span> <span class="n">MiniSearch</span>({
+  fields: [<span class="s">'title'</span>, <span class="s">'body'</span>, <span class="s">'tags'</span>],
+  storeFields: [<span class="s">'id'</span>, <span class="s">'title'</span>, <span class="s">'source'</span>, <span class="s">'uses'</span>],
+  searchOptions: {
+    boost: { title: <span class="n">3</span>, tags: <span class="n">2</span> },
+    fuzzy: <span class="n">0.18</span>,           <span class="c">// tolerate 1 typo per 6 chars</span>
+    prefix: <span class="k">true</span>,           <span class="c">// "refac" matches "refactor"</span>
+    combineWith: <span class="s">'AND'</span>,
+  },
+});
+idx.<span class="n">addAll</span>(<span class="k">await</span> <span class="n">fetchInitial</span>());</pre>
+      </div>
+
+      <h4>Layer 2 — server (SQLite FTS5)</h4>
+      <p>200 ms after the user stops typing, the client also calls <code>/api/search?q=…</code>. The server runs an FTS5 query with BM25 ranking, then merges any new IDs into the displayed result set. The merge is gentle — already-visible items don't reorder, new items slot in with a soft fade.</p>
+      <div class="code">
+        <div class="code-head"><span>internal/store/search.go</span><span class="lang">Go</span></div>
+<pre><span class="k">func</span> (s *<span class="t">Store</span>) <span class="n">Search</span>(ctx <span class="t">context.Context</span>, q <span class="t">string</span>, src <span class="t">string</span>) ([]<span class="t">Prompt</span>, <span class="t">error</span>) {
+  <span class="k">const</span> sql = <span class="s">`</span>
+<span class="s">    SELECT p.id, p.title, p.body, p.tags, p.source, p.uses, p.pinned</span>
+<span class="s">    FROM prompts_fts f</span>
+<span class="s">    JOIN prompts p ON p.rowid = f.rowid</span>
+<span class="s">    WHERE prompts_fts MATCH ?</span>
+<span class="s">      AND (? = '' OR p.source = ?)</span>
+<span class="s">      AND p.archived = 0</span>
+<span class="s">    ORDER BY bm25(prompts_fts, 3.0, 1.0, 2.0), p.uses DESC</span>
+<span class="s">    LIMIT 50;</span>
+<span class="s">  `</span>
+  <span class="k">return</span> s.<span class="n">query</span>(ctx, sql, <span class="n">ftsQuoteQuery</span>(q), src, src)
+}</pre>
+      </div>
+
+      <p><code>ftsQuoteQuery</code> wraps each token in double quotes and appends <code>*</code> so partial words match, then ORs them. This avoids FTS5's syntax-error surprises when a user types punctuation.</p>
+
+      <div class="verdict">
+        <div class="verdict-label">Performance budget</div>
+        <p>Cold load &lt; 80 ms · keystroke → first paint &lt; 16 ms (client) · keystroke → server-ranked results &lt; 60 ms · 10 000 prompts indexed in &lt; 600 ms at startup.</p>
+      </div>
+    </section>
+
+    <!-- ============ 6. INGESTION ============ -->
+    <section id="ingestion" class="reveal">
+      <div class="sec-num">06 — Ingestion</div>
+      <h2>Four paths in, one inbox out.</h2>
+      <p>Nothing auto-imports. Every external prompt lands in an <strong>Inbox</strong> view first, where you keep or discard with a single keystroke. The library stays curated by default.</p>
+
+      <h3>Codex</h3>
+      <p>Walks <code>$CODEX_HOME/sessions/YYYY/MM/DD/rollout-*.jsonl</code> (default <code>~/.codex</code>). Each line is a JSON event; we keep only the messages where <code>role == "user"</code> and content is non-empty. The first user prompt of each session is what people usually want — but later prompts in the same session are also offered, lower in the ranking.</p>
+      <div class="code">
+        <div class="code-head"><span>internal/ingest/codex.go</span><span class="lang">Go</span></div>
+<pre><span class="k">func</span> <span class="n">ScanCodex</span>(root <span class="t">string</span>) ([]<span class="t">Candidate</span>, <span class="t">error</span>) {
+  <span class="k">var</span> out []<span class="t">Candidate</span>
+  <span class="k">return</span> out, <span class="n">filepath.WalkDir</span>(root, <span class="k">func</span>(p <span class="t">string</span>, d <span class="t">fs.DirEntry</span>, err <span class="t">error</span>) <span class="t">error</span> {
+    <span class="k">if</span> err != <span class="k">nil</span> || d.<span class="n">IsDir</span>() || !<span class="n">strings.HasSuffix</span>(p, <span class="s">".jsonl"</span>) {
+      <span class="k">return</span> err
+    }
+    f, err := <span class="n">os.Open</span>(p)
+    <span class="k">if</span> err != <span class="k">nil</span> { <span class="k">return</span> err }
+    <span class="k">defer</span> f.<span class="n">Close</span>()
+    sc := <span class="n">bufio.NewScanner</span>(f)
+    sc.<span class="n">Buffer</span>(<span class="k">make</span>([]<span class="t">byte</span>, <span class="n">1024</span>*<span class="n">1024</span>), <span class="n">8</span>*<span class="n">1024</span>*<span class="n">1024</span>)
+    <span class="k">for</span> sc.<span class="n">Scan</span>() {
+      <span class="k">var</span> ev <span class="t">struct</span> {
+        Type     <span class="t">string</span> <span class="s">`json:"type"`</span>
+        Payload  <span class="t">struct</span> {
+          Role    <span class="t">string</span> <span class="s">`json:"role"`</span>
+          Content <span class="t">string</span> <span class="s">`json:"content"`</span>
+        } <span class="s">`json:"payload"`</span>
+      }
+      <span class="k">if</span> err := <span class="n">json.Unmarshal</span>(sc.<span class="n">Bytes</span>(), &ev); err != <span class="k">nil</span> { <span class="k">continue</span> }
+      <span class="k">if</span> ev.Payload.Role == <span class="s">"user"</span> && <span class="n">len</span>(ev.Payload.Content) > <span class="n">20</span> {
+        out = <span class="n">append</span>(out, <span class="t">Candidate</span>{
+          Body: ev.Payload.Content, Source: <span class="s">"codex"</span>, SourceRef: p,
+        })
+      }
+    }
+    <span class="k">return</span> sc.<span class="n">Err</span>()
+  })
+}</pre>
+      </div>
+
+      <h3>OpenCode</h3>
+      <p>Walks <code>$OPENCODE_DATA_DIR/storage/message/{sessionID}/msg_*.json</code> (default <code>~/.local/share/opencode</code>). Each file is one message; filter to <code>role == "user"</code>. Same dedup-by-hash flow.</p>
+
+      <h3>Web</h3>
+      <p>A 12-line bookmarklet: select text on any page, click the bookmark, it POSTs <code>{ title: document.title, body: selection, url: location.href }</code> to <code>http://localhost:7777/api/ingest/web</code>. CORS is locked to <code>*</code> on that route only — safe because the server binds to <code>127.0.0.1</code> by default.</p>
+
+      <h3>Manual</h3>
+      <p>"+ New" button opens a paper-feeling form (textarea in Fraunces italic, tag chips below). Saves directly to <code>prompts</code> with <code>source = 'manual'</code>.</p>
+
+      <h3>Dedup &amp; watch</h3>
+      <p>Every candidate gets a SHA-256 of its trimmed body; the first 16 chars become <code>body_hash</code>. The <code>UNIQUE</code> index in SQL is the actual dedup mechanism — Go just inserts and ignores constraint violations.</p>
+      <p>An fsnotify watcher on the Codex and OpenCode dirs auto-runs ingest on new sessions. A small dot appears next to the Inbox count when new candidates arrive — no notification, no popup. Calm.</p>
+    </section>
+
+    <!-- ============ 7. API ============ -->
+    <section id="api" class="reveal">
+      <div class="sec-num">07 — API surface</div>
+      <h2>Twelve endpoints. No more.</h2>
+      <table class="api-table">
+        <thead>
+          <tr><th></th><th>Endpoint</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="method get">GET</span></td><td>/api/prompts?source=&amp;limit=&amp;offset=</td><td>List, newest first, with optional source filter</td></tr>
+          <tr><td><span class="method get">GET</span></td><td>/api/prompts/:id</td><td>Read one</td></tr>
+          <tr><td><span class="method post">POST</span></td><td>/api/prompts</td><td>Create (manual)</td></tr>
+          <tr><td><span class="method patch">PATCH</span></td><td>/api/prompts/:id</td><td>Update title/body/tags/pinned</td></tr>
+          <tr><td><span class="method post">POST</span></td><td>/api/prompts/:id/archive</td><td>Soft delete</td></tr>
+          <tr><td><span class="method post">POST</span></td><td>/api/prompts/:id/copy</td><td>Bump <code>uses</code>, return formatted body</td></tr>
+          <tr><td><span class="method get">GET</span></td><td>/api/search?q=&amp;source=</td><td>FTS5 search with BM25 ranking</td></tr>
+          <tr><td><span class="method get">GET</span></td><td>/api/inbox</td><td>Pending ingest candidates</td></tr>
+          <tr><td><span class="method post">POST</span></td><td>/api/inbox/:id/keep</td><td>Promote to prompts (optional title override)</td></tr>
+          <tr><td><span class="method delete">DELETE</span></td><td>/api/inbox/:id</td><td>Discard a candidate</td></tr>
+          <tr><td><span class="method post">POST</span></td><td>/api/ingest/scan</td><td>Manually re-scan Codex + OpenCode dirs</td></tr>
+          <tr><td><span class="method post">POST</span></td><td>/api/ingest/web</td><td>Bookmarklet target</td></tr>
+        </tbody>
+      </table>
+      <h4>Response shape</h4>
+      <p>Every response is JSON with a flat shape — <code>{ data, error }</code> on writes, a plain array on reads. No envelopes, no HATEOAS. Errors return HTTP status + <code>{ error: "human-readable message" }</code>.</p>
+    </section>
+
+    <!-- ============ 8. FRONTEND ============ -->
+    <section id="frontend" class="reveal">
+      <div class="sec-num">08 — Frontend</div>
+      <h2>The Atelier system, written down.</h2>
+      <p>The visual language carries the product. Below are the tokens that make it cohesive — every color, type rule, and motion curve lives in <code>web/styles.css</code> as a custom property.</p>
+
+      <h4>Color tokens</h4>
+      <div class="code">
+        <div class="code-head"><span>web/styles.css · :root</span><span class="lang">CSS</span></div>
+<pre><span class="c">/* Paper — warm, never pure white */</span>
+--paper:      #f3eee5;   <span class="c">/* canvas */</span>
+--paper-2:    #ebe5d8;   <span class="c">/* second surface */</span>
+--paper-3:    #ddd5c2;   <span class="c">/* tags, fills */</span>
+--paper-warm: #fbf7ed;   <span class="c">/* card top */</span>
+
+<span class="c">/* Ink — never pure black */</span>
+--ink:        #1a1814;   <span class="c">/* primary text */</span>
+--ink-soft:   #4d4a44;   <span class="c">/* body */</span>
+--ink-mute:   #8a857b;   <span class="c">/* meta */</span>
+
+<span class="c">/* Rule — separators */</span>
+--rule:       #c8c0ad;
+--rule-soft:  #d8d2bf;
+
+<span class="c">/* Accents — used sparingly */</span>
+--accent:     #b8533a;   <span class="c">/* terracotta — pins, CTAs, eyebrows */</span>
+--sage:       #6a7a5e;   <span class="c">/* "copied" success */</span>
+--gold:       #a07c2b;   <span class="c">/* PATCH/edit affordances */</span></pre>
+      </div>
+
+      <h4>Type scale</h4>
+      <ul class="refined">
+        <li><b>Display</b> — Fraunces, weight 300, italic for emphasis, <code>opsz</code> 144 at large sizes (more contrast in the curves)</li>
+        <li><b>Body</b> — IBM Plex Sans, weight 300 (paragraphs) / 400 (UI labels) / 500 (strong)</li>
+        <li><b>Code &amp; meta</b> — IBM Plex Mono, weight 400, 0.04–0.22em letter-spacing for caps</li>
+        <li><b>Sizes</b> — 11, 12.5, 13.5, 15.5 (body), 18, 22, 32, 44, 64 — a quarter-step scale, not a half-step</li>
+      </ul>
+
+      <h4>Motion system</h4>
+      <p>Animations exist to <em>confirm</em>, not to entertain. Three timing curves cover everything:</p>
+      <ul class="refined">
+        <li><b>Reveal</b> — <code>cubic-bezier(.2, .7, .25, 1)</code>, 500 ms, used for page/section entry with 40 ms stagger between siblings</li>
+        <li><b>Hover</b> — <code>ease-out</code>, 250–350 ms, lifts cards by 3 px and adds a 30 px soft shadow</li>
+        <li><b>Confirm</b> — <code>ease-out</code>, 1600 ms total, used by the Copy button: label fades to checkmark in 200 ms, sits in "copied" state, fades back</li>
+      </ul>
+      <p>No parallax. No spring physics. No micro-interactions on every element. The motion budget is intentionally small.</p>
+
+      <h4>File structure</h4>
+      <div class="code">
+        <div class="code-head"><span>repo layout</span><span class="lang">tree</span></div>
+<pre>prompt-vault/
+├── main.go                  <span class="c">// entrypoint, opens browser</span>
+├── go.mod
+├── internal/
+│   ├── server/              <span class="c">// chi routes, handlers</span>
+│   │   ├── server.go
+│   │   ├── handlers.go
+│   │   └── middleware.go
+│   ├── store/               <span class="c">// SQLite + FTS</span>
+│   │   ├── sqlite.go
+│   │   ├── schema.sql
+│   │   ├── prompts.go
+│   │   └── search.go
+│   ├── ingest/              <span class="c">// codex, opencode, web</span>
+│   │   ├── codex.go
+│   │   ├── opencode.go
+│   │   ├── web.go
+│   │   └── watcher.go
+│   └── config/
+│       └── config.go
+├── web/                     <span class="c">// embedded via go:embed</span>
+│   ├── index.html
+│   ├── styles.css
+│   ├── app.js
+│   ├── fonts/
+│   │   ├── Fraunces.woff2
+│   │   ├── IBMPlexSans.woff2
+│   │   └── IBMPlexMono.woff2
+│   └── vendor/
+│       ├── alpine.min.js
+│       └── minisearch.min.js
+└── Makefile</pre>
+      </div>
+    </section>
+
+    <!-- ============ 9. BUILD ============ -->
+    <section id="build" class="reveal">
+      <div class="sec-num">09 — Build &amp; ship</div>
+      <h2>One command produces six binaries.</h2>
+      <p>Because we picked pure-Go SQLite, there is no CGO and cross-compilation is trivial. A single <code>make release</code> produces every binary for macOS, Linux, and Windows on both amd64 and arm64.</p>
+      <div class="code">
+        <div class="code-head"><span>Makefile</span><span class="lang">make</span></div>
+<pre>VERSION := $(shell git describe --tags --always)
+LDFLAGS := -s -w -X main.version=$(VERSION)
+TARGETS := \
+  darwin/amd64 darwin/arm64 \
+  linux/amd64  linux/arm64  \
+  windows/amd64 windows/arm64
+
+dev:
+	go run ./...
+
+release:
+	@for t in $(TARGETS); do \
+	  GOOS=$${t%/*} GOARCH=$${t#*/} \
+	  go build -trimpath -ldflags "$(LDFLAGS)" \
+	    -o dist/prompt-vault-$${t%/*}-$${t#*/}$$( \
+	      [ $${t%/*} = windows ] && echo .exe ) .; \
+	done
+
+clean:
+	rm -rf dist/</pre>
+      </div>
+      <p>Each binary is ~12 MB stripped. The first run creates <code>~/.prompt-vault/vault.db</code>, opens a browser tab at <code>http://127.0.0.1:7777</code>, and starts the fsnotify watchers. <code>Ctrl-C</code> flushes the WAL and exits clean.</p>
+    </section>
+
+    <!-- ============ 10. ROADMAP ============ -->
+    <section id="roadmap" class="reveal">
+      <div class="sec-num">10 — Roadmap</div>
+      <h2>Five quiet milestones.</h2>
+      <div class="roadmap">
+        <div class="milestone">
+          <div class="ms-label">M0<small>Week 1</small></div>
+          <div class="ms-body">
+            <h4>Spine</h4>
+            <p>Go binary boots, SQLite schema applied, embed.FS serves <code>index.html</code>. CRUD endpoints + FTS5 search work. Atelier UI renders the grid, search, filter chips, copy. No ingestion yet.</p>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="ms-label">M1<small>Week 2</small></div>
+          <div class="ms-body">
+            <h4>Codex ingest + Inbox</h4>
+            <p>Walk <code>~/.codex/sessions</code>, populate the inbox, build the keep/discard UI (Fraunces italic on candidate body, big terracotta "Keep" button). fsnotify watcher for new sessions.</p>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="ms-label">M2<small>Week 3</small></div>
+          <div class="ms-body">
+            <h4>OpenCode + Web</h4>
+            <p>OpenCode walker for <code>~/.local/share/opencode/storage/message</code>. Web bookmarklet generator (the app shows you the bookmarklet to drag to your bookmarks bar). CORS hardening.</p>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="ms-label">M3<small>Week 4</small></div>
+          <div class="ms-body">
+            <h4>Polish</h4>
+            <p>Templates with <code>{{placeholder}}</code> highlighting on copy. Keyboard shortcuts (<code>⌘K</code> search, <code>⌘C</code> copy, <code>⌘N</code> new, <code>j/k</code> nav). Settings page for ingest paths.</p>
+          </div>
+        </div>
+        <div class="milestone">
+          <div class="ms-label">M4<small>Future</small></div>
+          <div class="ms-body">
+            <h4>Native shell</h4>
+            <p>Optional: wrap the binary in a tray app (systray for Go) with a global hotkey to summon the window. Optional Tauri rewrite if memory becomes a concern.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 11. TRADE-OFFS ============ -->
+    <section id="tradeoffs" class="reveal">
+      <div class="sec-num">11 — Trade-offs</div>
+      <h2>What we're <em>not</em> building.</h2>
+      <p>Every decision implies a refusal. These are the ones to name now so we don't drift later:</p>
+      <ul class="refined">
+        <li><b>No sync.</b> One machine, one vault. Adding sync turns a tool into a service. If users ask, suggest committing <code>vault.db</code> to a private git repo.</li>
+        <li><b>No accounts, no telemetry.</b> The binary never makes an outbound request. Ever.</li>
+        <li><b>No prompt running.</b> This is a library, not an IDE. We don't call OpenAI/Anthropic. Copy is the only output.</li>
+        <li><b>No teams.</b> If you need shared prompts, this is the wrong tool. Reach for Langfuse or PromptHub.</li>
+        <li><b>No mobile.</b> The Atelier design is desktop-first and won't compromise to fit a phone. A read-only mobile view is M5+.</li>
+        <li><b>No embedding-based search</b> until FTS5 demonstrably falls short. The bar for adding that complexity is high.</li>
+      </ul>
+
+      <div class="verdict">
+        <div class="verdict-label">The product, in one line</div>
+        <p>A local, calm, single-binary library that turns the prompts scattered across your sessions and bookmarks into a place you'll actually return to.</p>
+      </div>
+    </section>
+
+    <footer>
+      <div>Prompt&nbsp;Vault · Spec v1.0</div>
+      <div><b>ready to build.</b></div>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // Reveal on scroll
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // TOC active highlighting
+  const tocLinks = document.querySelectorAll('.toc a');
+  const sections = document.querySelectorAll('section[id]');
+  const tocObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        tocLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + id));
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px' });
+  sections.forEach(s => tocObserver.observe(s));
+</script>
+</body>
+</html>
