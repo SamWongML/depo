@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Wealth-Assistant Engine v3 — Connected, Self-Correcting Signal System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d0e12; --ink-2:#13151b; --panel:#16181f; --panel-2:#1b1e27;
+    --line:rgba(233,224,205,0.10); --line-strong:rgba(233,224,205,0.20);
+    --cream:#f4efe2; --muted:#9a9587; --muted-2:#75716a;
+    --amber:#e7ad44; --amber-soft:#f0c878; --cyan:#79c6cb;
+    --bull:#7fb98a; --bear:#dd8466; --bear-soft:#e8a78f; --violet:#a99bd4;
+    --radius:7px; --maxw:1000px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:84px}
+  body{background:var(--ink);color:var(--cream);font-family:"Hanken Grotesk","PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;line-height:1.62;font-size:16.5px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(900px 600px at 85% -5%, rgba(231,173,68,0.10), transparent 60%),radial-gradient(800px 700px at -10% 110%, rgba(121,198,203,0.07), transparent 55%),linear-gradient(to bottom, #0f1014, #0b0c10)}
+  body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.5;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:46px 46px;-webkit-mask-image:radial-gradient(circle at 50% 40%, black, transparent 85%);mask-image:radial-gradient(circle at 50% 40%, black, transparent 85%)}
+  .wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 22px}
+
+  nav{position:sticky;top:0;z-index:50;background:rgba(11,12,16,0.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .nav-inner{max-width:var(--maxw);margin:0 auto;padding:11px 22px;display:flex;align-items:center;gap:18px}
+  .nav-brand{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:0.12em;color:var(--amber);text-transform:uppercase;white-space:nowrap;font-weight:600}
+  .nav-links{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .nav-links::-webkit-scrollbar{display:none}
+  .nav-links a{font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:0.04em;color:var(--muted);text-decoration:none;white-space:nowrap;padding:5px 9px;border-radius:5px;transition:.2s}
+  .nav-links a:hover,.nav-links a.active{color:var(--cream);background:rgba(231,173,68,0.13)}
+
+  header.hero{padding:78px 0 46px;position:relative}
+  .kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;color:var(--amber);margin-bottom:20px;opacity:0;animation:rise .7s .05s forwards}
+  .kicker .pt2{color:var(--cyan)}
+  h1{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(2.4rem,6.4vw,4.1rem);line-height:1.02;letter-spacing:-0.015em;margin-bottom:22px;opacity:0;animation:rise .8s .15s forwards}
+  h1 em{font-style:italic;color:var(--amber-soft)}
+  .lede{font-size:clamp(1.05rem,2.1vw,1.26rem);color:var(--muted);max-width:740px;opacity:0;animation:rise .8s .28s forwards}
+  .lede strong{color:var(--cream);font-weight:600}
+  .lede em{color:var(--amber-soft);font-style:italic}
+  .meta-row{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:30px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted-2);letter-spacing:0.03em;opacity:0;animation:rise .8s .4s forwards}
+  .meta-row b{color:var(--cyan);font-weight:500}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+  .verdict{margin:42px 0 10px;padding:26px 28px;border-radius:var(--radius);background:linear-gradient(135deg,rgba(231,173,68,0.13),rgba(231,173,68,0.04));border:1px solid rgba(231,173,68,0.3);border-left:3px solid var(--amber)}
+  .verdict .vlabel{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--amber-soft);margin-bottom:9px}
+  .verdict p{font-family:"Fraunces",serif;font-size:clamp(1.1rem,2.5vw,1.42rem);line-height:1.42;color:var(--cream)}
+  .verdict p strong{color:var(--amber-soft)}
+  .verdict p.tiny{font-family:"Hanken Grotesk",sans-serif;font-size:0.95rem;line-height:1.55;color:var(--muted);margin-top:14px}
+
+  section{padding:54px 0;border-top:1px solid var(--line)}
+  .sec-num{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:0.16em;color:var(--amber);margin-bottom:12px}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.7rem,4vw,2.5rem);line-height:1.08;letter-spacing:-0.01em;margin-bottom:16px}
+  h2 .sub{display:block;font-family:"Hanken Grotesk",sans-serif;font-weight:400;font-size:0.92rem;color:var(--muted);margin-top:10px;letter-spacing:0;line-height:1.5}
+  h2 em{font-style:italic;color:var(--amber-soft)}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.28rem;margin:30px 0 12px;color:var(--cream)}
+  h4{font-size:0.82rem;font-family:"IBM Plex Mono",monospace;letter-spacing:0.08em;text-transform:uppercase;color:var(--cyan);margin:22px 0 9px}
+  p{margin-bottom:14px;color:#ded9cc}
+  p.tight{margin-bottom:8px}
+  a.inline{color:var(--amber-soft);text-decoration:none;border-bottom:1px dotted rgba(240,200,120,0.5)}
+  strong{color:var(--cream)}
+  code{font-family:"IBM Plex Mono",monospace;font-size:0.86em;background:rgba(121,198,203,0.1);color:var(--cyan);padding:1px 5px;border-radius:4px}
+
+  ul,ol{margin:0 0 16px 2px;padding-left:20px}
+  li{margin-bottom:9px;color:#ded9cc}
+  li::marker{color:var(--amber)}
+  ul.clean{list-style:none;padding-left:0}
+  ul.clean li{padding-left:24px;position:relative}
+  ul.clean li::before{content:"▸";position:absolute;left:2px;color:var(--amber);font-size:0.85em;top:1px}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin:18px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .stat .num{font-family:"Fraunces",serif;font-weight:600;font-size:1.6rem;color:var(--amber-soft);line-height:1.05}
+  .stat .num.green{color:var(--bull)} .stat .num.red{color:var(--bear-soft)}
+  .stat .lab{font-size:0.8rem;color:var(--muted);margin-top:8px;line-height:1.4}
+
+  .bb{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+  .col-bull,.col-bear{border-radius:var(--radius);padding:22px;border:1px solid}
+  .col-bull{background:rgba(127,185,138,0.07);border-color:rgba(127,185,138,0.28)}
+  .col-bear{background:rgba(221,132,102,0.07);border-color:rgba(221,132,102,0.28)}
+  .col-bull h4{color:var(--bull)} .col-bear h4{color:var(--bear-soft)}
+  .col-bull li::before{content:"▲";color:var(--bull);font-size:0.7em;top:3px}
+  .col-bear li::before{content:"▼";color:var(--bear-soft);font-size:0.7em;top:3px}
+
+  .signal-key{margin:22px 0;padding:22px 24px;border-radius:var(--radius);background:linear-gradient(135deg,rgba(121,198,203,0.12),rgba(121,198,203,0.03));border:1px solid rgba(121,198,203,0.3)}
+  .signal-key .sk-lab{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+  .signal-key p{margin:0;color:var(--cream);font-size:1.05rem}
+  .signal-key.amber{background:linear-gradient(135deg,rgba(231,173,68,0.12),rgba(231,173,68,0.03));border-color:rgba(231,173,68,0.3)}
+  .signal-key.amber .sk-lab{color:var(--amber)}
+  .signal-key.violet{background:linear-gradient(135deg,rgba(169,155,212,0.13),rgba(169,155,212,0.03));border-color:rgba(169,155,212,0.3)}
+  .signal-key.violet .sk-lab{color:var(--violet)}
+
+  .tbl{width:100%;border-collapse:collapse;margin:16px 0;font-size:0.89rem}
+  .tbl th{text-align:left;font-family:"IBM Plex Mono",monospace;font-size:0.69rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--cyan);padding:10px 11px;border-bottom:1px solid var(--line-strong);vertical-align:bottom}
+  .tbl td{padding:11px 11px;border-bottom:1px solid var(--line);color:#ded9cc;vertical-align:top}
+  .tbl tr:last-child td{border-bottom:none}
+  .tbl .dim{color:var(--muted)}
+  .tbl .mono{font-family:"IBM Plex Mono",monospace;color:var(--amber-soft);font-size:0.83rem}
+  .tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:0.65rem;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;text-transform:uppercase;white-space:nowrap}
+  .tag.bull{background:rgba(127,185,138,0.18);color:var(--bull)}
+  .tag.bear{background:rgba(221,132,102,0.18);color:var(--bear-soft)}
+  .tag.warn{background:rgba(231,173,68,0.18);color:var(--amber-soft)}
+  .tag.dim{background:rgba(233,224,205,0.08);color:var(--muted)}
+  .tag.cyan{background:rgba(121,198,203,0.16);color:var(--cyan)}
+  .tag.violet{background:rgba(169,155,212,0.18);color:var(--violet)}
+
+  .prompt{background:var(--ink-2);border:1px solid var(--line-strong);border-radius:var(--radius);margin:16px 0;overflow:hidden}
+  .prompt-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 18px;background:rgba(231,173,68,0.06);border-bottom:1px solid var(--line)}
+  .prompt-head .pt{font-family:"IBM Plex Mono",monospace;font-size:0.78rem;letter-spacing:0.05em;color:var(--amber-soft);text-transform:uppercase}
+  .copy-btn{font-family:"IBM Plex Mono",monospace;font-size:0.7rem;letter-spacing:0.06em;color:var(--cream);background:rgba(255,255,255,0.06);border:1px solid var(--line-strong);border-radius:5px;padding:5px 11px;cursor:pointer;transition:.2s;text-transform:uppercase;white-space:nowrap}
+  .copy-btn:hover{background:var(--amber);color:#1a1407;border-color:var(--amber)}
+  .copy-btn.copied{background:var(--bull);color:#0d2010;border-color:var(--bull)}
+  .prompt-body{padding:16px 18px;font-family:"IBM Plex Mono",monospace;font-size:0.81rem;line-height:1.6;color:#cdc8bc;white-space:pre-wrap}
+  .prompt-body .ph{color:var(--cyan)} .prompt-body .cm{color:var(--muted-2)}
+
+  .schema{background:var(--ink-2);border:1px solid var(--line-strong);border-radius:var(--radius);padding:18px 20px;margin:16px 0;font-family:"IBM Plex Mono",monospace;font-size:0.79rem;line-height:1.62;color:#cdc8bc;white-space:pre;overflow-x:auto}
+  .schema .k{color:var(--cyan)} .schema .v{color:var(--amber-soft)} .schema .cm{color:var(--muted-2)} .schema .n{color:var(--bull)} .schema .r{color:var(--bear-soft)}
+
+  details{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:12px 0;overflow:hidden}
+  details summary{padding:15px 20px;cursor:pointer;font-family:"Hanken Grotesk",sans-serif;font-weight:600;color:var(--cream);list-style:none;display:flex;justify-content:space-between;align-items:center}
+  details summary::-webkit-details-marker{display:none}
+  details summary::after{content:"+";font-family:"IBM Plex Mono",monospace;color:var(--amber);font-size:1.3rem;transition:.2s}
+  details[open] summary::after{transform:rotate(45deg)}
+  details .dbody{padding:0 20px 18px;color:#ded9cc}
+  details .dbody .src{font-size:0.82rem;color:var(--muted);margin-bottom:7px;line-height:1.5}
+  details .dbody .src a{color:var(--amber-soft);text-decoration:none}
+
+  .note{font-size:0.85rem;color:var(--muted);font-style:italic;border-left:2px solid var(--line-strong);padding-left:14px;margin:14px 0}
+
+  /* architecture flow / loop */
+  .flow{margin:20px 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .band{padding:15px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .band:last-child{border-bottom:none}
+  .band .blab{display:flex;align-items:center;gap:10px;margin-bottom:7px;flex-wrap:wrap}
+  .band .bn{font-family:"IBM Plex Mono",monospace;font-size:0.7rem;font-weight:600;color:#1a1407;background:var(--amber);padding:2px 8px;border-radius:4px;letter-spacing:0.05em}
+  .band .bn.fb{background:var(--violet);color:#160f24}
+  .band .bt{font-family:"Fraunces",serif;font-weight:600;color:var(--cream);font-size:1.05rem}
+  .band .bd{font-size:0.9rem;color:#ded9cc;margin-bottom:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{font-family:"IBM Plex Mono",monospace;font-size:0.72rem;background:rgba(233,224,205,0.06);color:var(--muted);border:1px solid var(--line);padding:4px 9px;border-radius:5px}
+  .chip.c{color:var(--cyan);border-color:rgba(121,198,203,0.25);background:rgba(121,198,203,0.07)}
+  .chip.a{color:var(--amber-soft);border-color:rgba(231,173,68,0.25);background:rgba(231,173,68,0.07)}
+  .chip.v{color:var(--violet);border-color:rgba(169,155,212,0.25);background:rgba(169,155,212,0.07)}
+  .arrow{text-align:center;font-family:"IBM Plex Mono",monospace;font-size:0.72rem;color:var(--amber);padding:5px 0;background:var(--ink-2)}
+  .arrow.fb{color:var(--violet)}
+
+  .ladder{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .lcard{border-radius:var(--radius);padding:18px 20px;border:1px solid}
+  .lcard.buy{background:rgba(127,185,138,0.07);border-color:rgba(127,185,138,0.28)}
+  .lcard.sell{background:rgba(221,132,102,0.07);border-color:rgba(221,132,102,0.28)}
+  .lcard h4{margin-top:0} .lcard.buy h4{color:var(--bull)} .lcard.sell h4{color:var(--bear-soft)}
+
+  .pill-row{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+  .pill{font-family:"IBM Plex Mono",monospace;font-size:0.74rem;background:rgba(121,198,203,0.1);color:var(--cyan);border:1px solid rgba(121,198,203,0.22);padding:5px 11px;border-radius:20px}
+
+  /* knowledge-graph svg frame */
+  .kgframe{margin:18px 0;border:1px solid var(--line);border-radius:var(--radius);background:radial-gradient(700px 320px at 50% 0%, rgba(169,155,212,0.08), transparent 70%),var(--ink-2);padding:8px}
+  .kgframe svg{display:block;width:100%;height:auto}
+  .kgcap{font-size:0.8rem;color:var(--muted);padding:6px 14px 10px;font-style:italic}
+  .kg-node-fund{fill:rgba(231,173,68,0.16);stroke:var(--amber);stroke-width:1.2}
+  .kg-node-sec{fill:rgba(221,132,102,0.16);stroke:var(--bear-soft);stroke-width:1.2}
+  .kg-node-theme{fill:rgba(169,155,212,0.16);stroke:var(--violet);stroke-width:1.2}
+  .kg-edge{stroke:rgba(233,224,205,0.22);stroke-width:1.1}
+  .kg-edge.hot{stroke:var(--bear-soft);stroke-width:1.8;stroke-dasharray:4 3}
+  .kg-label{font-family:"IBM Plex Mono",monospace;font-size:10px;fill:var(--cream)}
+  .kg-elabel{font-family:"IBM Plex Mono",monospace;font-size:8.5px;fill:var(--muted)}
+
+  footer{border-top:1px solid var(--line);padding:44px 0 70px;margin-top:30px}
+  .disc{background:rgba(221,132,102,0.06);border:1px solid rgba(221,132,102,0.22);border-radius:var(--radius);padding:20px 22px;font-size:0.86rem;color:var(--muted)}
+  .disc b{color:var(--bear-soft)}
+  .foot-meta{margin-top:24px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted-2);letter-spacing:0.04em;line-height:1.7}
+
+  @media(max-width:760px){
+    body{font-size:16px}
+    .grid2,.grid3,.bb,.ladder{grid-template-columns:1fr}
+    header.hero{padding:54px 0 32px}
+    section{padding:42px 0}
+    .nav-brand{display:none}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <span class="nav-brand">◆ Wealth-Assistant Engine · v3</span>
+    <div class="nav-links" id="navlinks">
+      <a href="#system">System</a>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#factors">Factor States</a>
+      <a href="#data">Data Sources</a>
+      <a href="#graph">Connection Graph</a>
+      <a href="#feedback">Feedback Loop</a>
+      <a href="#emerging">Emerging Radar</a>
+      <a href="#decision">Decision</a>
+      <a href="#storage">Storage</a>
+      <a href="#robust">Durability</a>
+      <a href="#build">Build It</a>
+      <a href="#verify">Does It Work?</a>
+      <a href="#limits">Limits</a>
+      <a href="#sources">Sources</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">v3 · <span class="pt2">Connected &amp; Self-Correcting Edition</span> · June 2026</div>
+    <h1>An engine that sees the <em>hidden connections</em> — and learns from you each night.</h1>
+    <p class="lede">Three upgrades to the same disciplined nightly system. <strong>(1) A connection graph</strong> so when a holding's biggest position falls, the engine instantly shows every other fund on your lists exposed to the same name, supplier, or driver — the overlap you can't see by eye. <strong>(2) A feedback loop</strong>: each morning you agree, disagree, or correct the read, and tonight's digest is conditioned on what you taught it — continual adaptation, <em>no fine-tuning</em>. <strong>(3) A modern, point-in-time data spine</strong> — bitemporal time-series, a local lakehouse, vectors, and a temporal graph, all embedded. The philosophy is unchanged and deliberate: <strong>descriptive factor states, never a fitted composite</strong> — the LLM interprets, it does not optimize, so there is almost nothing to overfit.</p>
+    <div class="meta-row">
+      <span>Builds on: <b>signal_core (states-not-composite)</b></span>
+      <span>Markets: <b>A-share core · US as lead · funds/ETFs · ≤R4</b></span>
+      <span>New: <b>graph · feedback memory · ArcticDB spine</b></span>
+    </div>
+
+    <div class="verdict">
+      <div class="vlabel">◆ The design principle that makes it durable</div>
+      <p>A durable system optimizes for <strong>a trustworthy nightly verdict</strong>, not a clever prediction. v3 keeps the three rules that don't decay — <strong>numbers as legible states, two-sided dated evidence, point-in-time everything</strong> — and adds two that compound: <strong>connections you can audit</strong> (most are exact graph look-ups, not model guesses) and <strong>memory you govern</strong> (the engine adapts to your corrections, but validity windows and human-reviewed promotion stop bad feedback from rotting it). Themes rotate; the process stays the same.</p>
+      <p class="tiny">The honest frame carries over: signals shorten your <em>lag</em>, not your <em>risk</em>. The engine surfaces a sourced, calibrated, conditional lean — and now a map of what moves with what — each morning. You remain the only thing that clicks buy.</p>
+    </div>
+  </header>
+
+  <!-- 1 SYSTEM -->
+  <section id="system">
+    <div class="sec-num">01 / THE SYSTEM</div>
+    <h2>The nightly loop, now a cycle<span class="sub">Seven layers that turn a sprawl of sources into one dashboard — plus a feedback arc that carries last night's lesson into tonight's read.</span></h2>
+
+    <p>Each layer depends only on the one below, so you build bottom-up and stop at any height. The batch runs once at <strong>00:0x local</strong>, after both the A-share and US closes have printed, so the morning view is fresh. The one structural change from v2: a <span style="color:var(--violet)"><strong>feedback arc</strong></span> from your morning review back into the model's context, and a <strong>connection graph</strong> living beside the factor states.</p>
+
+    <div class="flow">
+      <div class="band">
+        <div class="blab"><span class="bn">L7</span><span class="bt">Your morning review + feedback</span></div>
+        <div class="bd">Read the three lists and the connection map. Act only when a lean + flip-trigger + sizing line up. Then leave a one-tap reaction (agree / disagree / correct) — that is the only new habit, and it is what makes tomorrow smarter.</div>
+        <div class="chips"><span class="chip a">holdings · watchlist · emerging</span><span class="chip a">connection map</span><span class="chip v">your feedback</span></div>
+      </div>
+      <div class="arrow">▲ renders &nbsp;·&nbsp; <span class="arrow fb" style="display:inline">your feedback ▼ feeds memory</span></div>
+      <div class="band">
+        <div class="blab"><span class="bn">L6</span><span class="bt">Dashboard JSON — the contract (§02)</span></div>
+        <div class="bd">One dated artifact per run: per-item state bundle, the calibrated lean, signal-evolution, <em>connections[]</em>, and evidence slots. All your frontend session needs to consume.</div>
+        <div class="chips"><span class="chip c">dashboard.json</span><span class="chip c">connections[]</span><span class="chip">market-regime header</span></div>
+      </div>
+      <div class="arrow">▲ emits</div>
+      <div class="band">
+        <div class="blab"><span class="bn">L5</span><span class="bt">LLM digest + decision + memory (§08)</span></div>
+        <div class="bd">For each item: read the factor <em>states</em>, the graph neighbourhood, the retrieved evidence, <strong>and the retrieved feedback-cases</strong> from similar past setups. Argue bull vs bear, anchor a base rate, emit a calibrated lean. Abstain when blind.</div>
+        <div class="chips"><span class="chip v">bull/bear debate</span><span class="chip v">base-rate anchor</span><span class="chip v">case memory recall</span><span class="chip v">abstain-when-blind</span></div>
+      </div>
+      <div class="arrow">▲ consumes</div>
+      <div class="band">
+        <div class="blab"><span class="bn">L4</span><span class="bt">Factor states + connection graph + emerging radar (§03·05·07)</span></div>
+        <div class="bd">The legible core: descriptive factor states per item (no fitted composite); the look-through &amp; GraphRAG connection engine; the weak-signal scan for new themes.</div>
+        <div class="chips"><span class="chip a">factor states</span><span class="chip a">look-through (exact)</span><span class="chip a">GraphRAG (fuzzy)</span><span class="chip a">weak-signal score</span></div>
+      </div>
+      <div class="arrow">▲ reads from</div>
+      <div class="band">
+        <div class="blab"><span class="bn">L3</span><span class="bt">Storage — the point-in-time spine (§09)</span></div>
+        <div class="bd">A modern, embedded, local-first quartet. Every reading stamped <em>as_of + fetched_at</em> and appended, never overwritten — the single rule that keeps look-ahead leakage out of your trust and your backtests.</div>
+        <div class="chips"><span class="chip c">ArcticDB (bitemporal)</span><span class="chip c">DuckDB / DuckLake</span><span class="chip c">LanceDB (vectors)</span><span class="chip c">temporal graph</span></div>
+      </div>
+      <div class="arrow">▲ ingests</div>
+      <div class="band">
+        <div class="blab"><span class="bn">L2</span><span class="bt">Sources &amp; ingestion — curated CN + correlated US (§04)</span></div>
+        <div class="bd">Structured pulls (dual-sourced &amp; cross-validated) on the left; messy-web extraction on the right; <strong>holdings feeds</strong> that become the graph's edges.</div>
+        <div class="chips"><span class="chip">AkShare + Tushare Pro</span><span class="chip c">EdgarTools 13F/N-PORT · FRED · FMP</span><span class="chip a">Tavily→Jina/Firecrawl</span><span class="chip">研报 · 互动易 · fund holdings</span></div>
+      </div>
+      <div class="arrow fb">▲ &nbsp; the feedback arc closes here: memory store sits beside L3, read by L5 &nbsp; ▲</div>
+      <div class="band">
+        <div class="blab"><span class="bn fb">L1</span><span class="bt">Feedback &amp; case memory (§06)</span></div>
+        <div class="bd">Your reactions + the realised outcome of each past lean, stored as cases with validity windows. Retrieved at L5 so the model conditions on what you taught it — and on what actually happened — without any model re-training.</div>
+        <div class="chips"><span class="chip v">{state → lean → your feedback → outcome}</span><span class="chip v">Zep/Graphiti or Mem0</span><span class="chip v">governed, decaying</span></div>
+      </div>
+    </div>
+
+    <div class="signal-key amber">
+      <div class="sk-lab">★ What "general-purpose" still buys you</div>
+      <p>The engine never hard-codes "AI compute." An <strong>item</strong> is anything with a price series and an investable wrapper — a chip ETF today; a robotics, power-grid, innovative-pharma, or commodity ETF tomorrow. The same factor states, the same decision schema, the same graph schema, the same dashboard apply. Adding a theme = adding a row to a config, not rewriting the system.</p>
+    </div>
+  </section>
+
+  <!-- 2 DASHBOARD -->
+  <section id="dashboard">
+    <div class="sec-num">02 / THE DASHBOARD MODEL</div>
+    <h2>Three lists, one connection map, one JSON contract<span class="sub">Define the data the frontend consumes <em>before</em> you build the frontend. This schema is that contract.</span></h2>
+
+    <div class="grid3">
+      <div class="panel"><h4 style="color:var(--bull)">Holdings</h4><p class="tight">What you own. Each night: <strong>hold, trim, or exit?</strong> Watch the lean's <em>evolution</em>, the flip-trigger — and now the <em>connections</em>: is a falling name leaking into more of your book than you thought?</p></div>
+      <div class="panel"><h4 style="color:var(--amber-soft)">Watchlist</h4><p class="tight">Known, investable themes you'd buy <em>at the right setup</em>. The question: <strong>has a BUY-EARLY trigger fired?</strong> (thesis intact + price reset + froth cooling, in an A-share reversal frame).</p></div>
+      <div class="panel"><h4 style="color:var(--violet)">Emerging</h4><p class="tight">Candidates the radar surfaced (§07). The question: <strong>a real weak signal worth promoting?</strong> — low base, high acceleration, a corroborated catalyst, an investable wrapper.</p></div>
+    </div>
+
+    <h3>The columns (and what each is for)</h3>
+    <table class="tbl">
+      <tr><th>Column</th><th>Meaning</th><th>Drives</th></tr>
+      <tr><td><strong>Today's lean</strong></td><td>A calibrated stance (Accumulate/Hold/Trim/Avoid/Abstain) the LLM reads off the factor <em>states</em> — never a fitted score</td><td>the headline read</td></tr>
+      <tr><td><strong>Lean evolution</strong></td><td>Sparkline of the lean + conviction over the last N nightly runs — direction &amp; acceleration</td><td><em>the early bit</em> — a washed-out name turning is the entry; a stretched name rolling over is the exit</td></tr>
+      <tr><td><strong>Conviction</strong></td><td>low/med/high, tied to evidence quality and case-history agreement</td><td>position sizing</td></tr>
+      <tr><td><strong>Crowding</strong></td><td>low/elevated/extreme — a <em>risk</em> gauge, not an alpha source (§03)</td><td>how careful to be</td></tr>
+      <tr><td><strong>Connections</strong> <span class="tag violet">new</span></td><td>Shared names / suppliers / drivers with your other items, and what's moving through them tonight</td><td>hidden concentration &amp; contagion</td></tr>
+      <tr><td><strong>Flip-trigger</strong></td><td>the single condition that would change the stance</td><td>what to watch next</td></tr>
+      <tr><td><strong>Action</strong></td><td>concrete, sized to your capped satellite sleeve</td><td>your decision</td></tr>
+      <tr><td class="dim">▸ drill-down</td><td class="dim">state-by-state breakdown + per-source evidence (LLM summary + link to raw) + the case-memory the lean leaned on</td><td class="dim">trust &amp; audit</td></tr>
+    </table>
+
+    <h3>The dashboard.json schema — the frontend contract</h3>
+    <div class="schema"><span class="cm">// one file per nightly run; your UI renders the lists + the connection map from this</span>
+{
+  <span class="k">"run_id"</span>: <span class="v">"2026-06-05T00:12Z"</span>, <span class="k">"generated_at"</span>: <span class="v">"2026-06-05T00:12:30Z"</span>,
+  <span class="k">"market_regime"</span>: { <span class="k">"a_share"</span>:<span class="v">"late/euphoric"</span>, <span class="k">"us_semis"</span>:<span class="v">"wobbling"</span>, <span class="k">"liquidity"</span>:<span class="v">"easy"</span>, <span class="k">"risk_dial"</span>:<span class="v">"reduce"</span> },
+  <span class="k">"items"</span>: [{
+     <span class="k">"id"</span>:<span class="v">"588200"</span>, <span class="k">"name"</span>:<span class="v">"科创芯片ETF"</span>, <span class="k">"list"</span>:<span class="v">"holding"</span>,
+     <span class="k">"theme"</span>:<span class="v">"AI compute / domestic chips"</span>, <span class="k">"as_of"</span>:<span class="v">"2026-06-05"</span>,
+     <span class="k">"lean"</span>:<span class="v">"Hold"</span>, <span class="k">"conviction"</span>:<span class="v">"medium"</span>, <span class="k">"crowding"</span>:<span class="v">"extreme"</span>,
+     <span class="k">"evolution"</span>:[<span class="v">"Accumulate","Hold","Hold","Trim","Hold"</span>],
+     <span class="k">"states"</span>:[ <span class="cm">// descriptive states, each with a band + direction + evidence (§03) — NOT a weighted score</span>
+        {<span class="k">"key"</span>:<span class="v">"cross_market_lead"</span>,<span class="k">"band"</span>:<span class="v">"high"</span>,<span class="k">"direction"</span>:<span class="v">"up=tailwind(lag)"</span>,<span class="k">"valid"</span>:<span class="n">true</span>},
+        {<span class="k">"key"</span>:<span class="v">"reversal"</span>,<span class="k">"band"</span>:<span class="v">"extreme_high"</span>,<span class="k">"direction"</span>:<span class="v">"ran up → reversal-DOWN risk"</span>,<span class="k">"valid"</span>:<span class="n">true</span>},
+        {<span class="k">"key"</span>:<span class="v">"crowding"</span>,<span class="k">"band"</span>:<span class="v">"extreme_high"</span>,<span class="k">"direction"</span>:<span class="v">"crowded → crash risk ↑"</span>,<span class="k">"valid"</span>:<span class="n">true</span>},
+        {<span class="k">"key"</span>:<span class="v">"valuation_pct"</span>,<span class="k">"band"</span>:<span class="v">"high"</span>,<span class="k">"direction"</span>:<span class="v">"expensive vs own range"</span>,<span class="k">"valid"</span>:<span class="n">true</span>},
+        {<span class="k">"key"</span>:<span class="v">"trend_gate"</span>,<span class="k">"band"</span>:<span class="v">"above_200d"</span>,<span class="k">"direction"</span>:<span class="v">"downtrend filter OK"</span>,<span class="k">"valid"</span>:<span class="n">true</span>},
+        {<span class="k">"key"</span>:<span class="v">"low_vol_regime"</span>,<span class="k">"band"</span>:<span class="v">"neutral"</span>,<span class="k">"direction"</span>:<span class="v">"calm"</span>,<span class="k">"valid"</span>:<span class="n">true</span>}
+     ],
+     <span class="k">"connections"</span>:[ <span class="cm">// from the graph (§05): mostly exact look-ups, some GraphRAG-surfaced</span>
+        {<span class="k">"type"</span>:<span class="v">"shared_holding"</span>,<span class="k">"node"</span>:<span class="v">"中际旭创"</span>,<span class="k">"also_in"</span>:[<span class="v">"光通信ETF","通信ETF"</span>],
+         <span class="r">"move"</span>:<span class="r">"-7.4% today"</span>,<span class="k">"your_lookthrough"</span>:<span class="v">"~11% of satellite sleeve"</span>,<span class="k">"hops"</span>:<span class="n">1</span>},
+        {<span class="k">"type"</span>:<span class="v">"shared_driver"</span>,<span class="k">"node"</span>:<span class="v">"hyperscaler capex"</span>,<span class="k">"also_in"</span>:[<span class="v">"AI算力ETF","美股科技QDII"</span>],<span class="k">"hops"</span>:<span class="n">2</span>,<span class="k">"surfaced_by"</span>:<span class="v">"graphrag"</span>}
+     ],
+     <span class="k">"flip_trigger"</span>:<span class="v">"a hyperscaler cuts 2026 capex guide, OR sector closes below 50-day on volume"</span>,
+     <span class="k">"action"</span>:<span class="v">"no add at highs; trim 1/3 if flip fires; watch shared_holding leakage"</span>,
+     <span class="k">"evidence"</span>:[{<span class="k">"source"</span>:<span class="v">"FT capex tracker"</span>,<span class="k">"as_of"</span>:<span class="v">"2026-04-30"</span>,<span class="k">"summary"</span>:<span class="v">"4 clouds ~$725bn, +77%; guides raised"</span>,<span class="k">"raw_ref"</span>:<span class="v">"cache://capex/2026-04-30"</span>}],
+     <span class="k">"memory_used"</span>:[{<span class="k">"case"</span>:<span class="v">"2026-03 optical stretch+crowded"</span>,<span class="k">"your_feedback"</span>:<span class="v">"weight crowding harder at extremes"</span>,<span class="k">"outcome"</span>:<span class="v">"-18% over 5wk"</span>}],
+     <span class="k">"confidence_note"</span>:<span class="v">"crowding state corroborated by turnover + Amihud; reversal band drove the cap on conviction"</span>
+  }]
+}</div>
+    <p class="note">UI tips for your frontend session: render <strong>evolution</strong> as a sparkline; show <strong>states</strong> as a small band strip (extreme_low … extreme_high) coloured by <em>direction</em>, not by sign, so a glance reveals <em>why</em>; make <strong>connections</strong> a tappable mini-graph that highlights any node moving &gt;X% tonight in <span style="color:var(--bear-soft)">bear</span>; surface <strong>memory_used</strong> in the drill-down so you can see — and correct — what the model leaned on. The <code>risk_dial</code> is a single top banner. The one-tap feedback control writes straight to L1 (§06).</p>
+  </section>
+
+  <!-- 3 FACTOR STATES -->
+  <section id="factors">
+    <div class="sec-num">03 / THE FACTOR STATES</div>
+    <h2>Simple, strong, descriptive — never a fitted score<span class="sub">The numeric core, kept deliberately un-optimized. Overfitting is a disease of <em>optimization</em>; if you never fit weights to past P&amp;L, there is almost nothing left to overfit.</span></h2>
+
+    <p>v3 keeps <code>signal_core</code>'s central choice: each raw input becomes a <strong>descriptive state</strong> — its current reading ranked against its <em>own</em> history and bucketed into a band (<code>extreme_low … extreme_high</code>), carrying a <code>direction</code>, a dated <code>evidence</code> pointer, and a <code>valid</code> flag. There is <strong>no weighted composite anywhere</strong>. The LLM reads the states and judges, in context and against the news, <em>when</em> each one is economically relevant — it does not compute or optimize them. Three construction rules survive; the factor list is sharpened by the 2026 evidence.</p>
+    <ul class="clean">
+      <li><strong>Rank against own history, in logic-based bands.</strong> Cut-points are constants chosen for economic meaning, never tuned to returns. A failed/stale factor becomes <code>valid:false</code> and the model is told to ignore it — missing ≠ bad, and one broken factor never sinks the snapshot.</li>
+      <li><strong>Read <code>direction</code>, never assume "high = good".</strong> In A-shares a stretched up-move is <em>reversal-down risk</em>, not bullish continuation. The state encodes which way "high" points.</li>
+      <li><strong>A handful is enough.</strong> The factor-zoo collapses to ~13 themes; the practitioner core is market, value, quality, momentum, low-vol. Naive 1/N beats 14 optimization models out-of-sample (DeMiguel). Add a factor only when it would have <em>changed a past decision you got wrong</em> — not because it is theoretically blessed.</li>
+    </ul>
+
+    <h3>The battery (each a <em>state</em>, generalized to a fund/theme)</h3>
+    <table class="tbl">
+      <tr><th>State</th><th>What it reads · how to compute</th><th>"high" means</th></tr>
+      <tr><td><strong>1 · Cross-market lead</strong> <span class="tag cyan">the edge</span></td><td>US leader (SOX / bellwether vendor / optical complex) short-horizon move &amp; revisions, as a forward read on the A-share chain</td><td>US pushing up → tailwind (lag)</td></tr>
+      <tr><td><strong>2 · Reversal</strong> <span class="tag bull">A-share alpha-ish</span></td><td>Short-horizon return vs its own history, <em>confirmed by turnover &amp; Amihud illiquidity</em> (the documented drivers of reversal). The A-share workhorse</td><td>ran up hard → reversal-<strong>DOWN</strong> risk</td></tr>
+      <tr><td><strong>3 · Crowding</strong> <span class="tag warn">risk, not alpha</span></td><td>Turnover percentile + Amihud + ETF in/out + theme-vs-benchmark PE premium. Margin (两融) RoC as context. <em>A crash predictor, not a return source</em></td><td>crowded → crash probability ↑</td></tr>
+      <tr><td><strong>4 · Demand / leading driver</strong></td><td>The theme's master driver, generalized: end-demand capex/orders, contract prices, capacity-vs-demand. Score the <em>revision direction</em></td><td>revised up / cut</td></tr>
+      <tr><td><strong>5 · Valuation</strong></td><td>PE/PB/PEG vs the theme's <em>own</em> history (percentile), not vs other themes</td><td>expensive vs own range</td></tr>
+      <tr><td><strong>6 · Trend gate</strong> <span class="tag bull">filter</span></td><td>Price vs 200-day MA + 12-mo excess return sign. Used as a <em>downtrend filter</em>, not a return-chaser</td><td>above MA → gate open</td></tr>
+      <tr><td><strong>7 · Low-vol / drawdown regime</strong></td><td>Realized-vol percentile + current drawdown depth → one defensive read</td><td>stressed regime</td></tr>
+      <tr><td><strong>8 · Macro / liquidity dial</strong> <span class="tag dim">book-wide</span></td><td>10-yr real yield, dollar, USD/CNY, Fed path → one regime state for the whole book (§08 relay)</td><td>tightening</td></tr>
+    </table>
+
+    <div class="signal-key">
+      <div class="sk-lab">★ Why this beats the old dual-momentum composite (the 2026 evidence)</div>
+      <p><strong>Crowding predicts crashes, not means.</strong> Out-of-sample (2001–2024), crowded <em>reversal</em> factors show ~1.7–1.8× higher crash probability, and crowding-based selection earns <em>no</em> alpha — so crowding belongs as a <strong>risk gauge</strong>, exactly where it sits here. <strong>Momentum decayed</strong> from ~10%/yr in the 1990s to ~2% and is now crowded with the widest winner-minus-loser dispersion since 1990 — so it stays a <em>gate</em>, never the engine. And <strong>short-term reversal</strong> — driven by turnover and Amihud illiquidity — is the robust exception that still diversifies, which is why it is the A-share workhorse. The states-not-composite design turns these findings into structure instead of a knob to overfit.</p>
+    </div>
+    <p class="note">The trend gate is the one hard rule: if a theme is below its 200-day MA, the LLM caps the lean at Hold/Avoid no matter how attractive the story. Never buy a downtrend. Everything else is judgment over states — humbled by a stated base rate, and now by your own past corrections (§06).</p>
+  </section>
+
+  <!-- 4 DATA SOURCES -->
+  <section id="data">
+    <div class="sec-num">04 / DATA SOURCES</div>
+    <h2>Curated in China, correlated in the US<span class="sub">Two free, well-documented primary stacks, dual-sourced and cross-validated, with the <em>holdings</em> feeds that become the connection graph's edges.</span></h2>
+
+    <p>The discipline is <strong>fetch-don't-recall</strong>: every figure is pulled, dated, and stamped — never remembered by the model. Two structured stacks anchor it, each cross-checked against the other where they overlap (the community-standard <em>dual-source</em> pattern: Tushare Pro for normalized data, AkShare free/broad as fallback and validator).</p>
+
+    <h3>China — well-curated, mostly free</h3>
+    <table class="tbl">
+      <tr><th>Need</th><th>Source &amp; interface</th><th>Note</th></tr>
+      <tr><td><strong>Prices, index, ETF</strong></td><td class="mono">AkShare: stock_zh_a_hist · index_zh_a_hist · fund_etf_*</td><td>eastmoney-sourced; supports 复权 (adjusted)</td></tr>
+      <tr><td><strong>Fund / ETF holdings</strong> <span class="tag violet">graph edges</span></td><td class="mono">AkShare: fund_report_stock_cninfo (基金重仓股) · fund_report_industry_allocation_cninfo · fund_report_asset_allocation_cninfo</td><td>quarterly, point-in-time by filing; the CN edge source for §05</td></tr>
+      <tr><td><strong>Crowding / flow</strong></td><td class="mono">两融 margin RoC · 龙虎榜 · ETF in/out · turnover concentration</td><td>northbound real-time was discontinued <strong>May 2024</strong> → use post-close turnover + top-10 actives + quarterly holdings</td></tr>
+      <tr><td><strong>Normalized fundamentals</strong></td><td class="mono">Tushare Pro (daily, financials, 指数成分)</td><td>higher consistency; some endpoints credit-gated (积分); cross-validate vs AkShare</td></tr>
+      <tr><td><strong>Messy-web text stream</strong></td><td class="mono">券商研报 · 互动易 Q&amp;A · 政策/规划 · 专利 · 百度指数</td><td>via Tavily→Jina/Firecrawl; feeds sentiment, the radar (§07) &amp; graph extraction</td></tr>
+    </table>
+
+    <h3>US — the leading-indicator &amp; cross-holding layer</h3>
+    <table class="tbl">
+      <tr><th>Need</th><th>Source &amp; interface</th><th>Note</th></tr>
+      <tr><td><strong>US fund / ETF holdings</strong> <span class="tag violet">graph edges</span></td><td class="mono">EdgarTools: Form N-PORT (monthly fund/ETF holdings) · 13F (institutions)</td><td><code>pip install edgartools</code> — free, <strong>no API key</strong>; the US edge source for §05</td></tr>
+      <tr><td><strong>The lead chain</strong></td><td class="mono">Hyperscaler capex · NVDA/Broadcom guidance · Coherent/Lumentum/Ciena/Arista · TrendForce DRAM · TSMC monthly rev · SOX overnight</td><td>the §08 relay — each a forward read on the A-share chain</td></tr>
+      <tr><td><strong>Macro / liquidity dial</strong></td><td class="mono">FRED: DGS10 · DFII10 · T10YIE · DTWEXBGS · DEXCHUS · WALCL</td><td>the book-wide risk regime (state 8)</td></tr>
+      <tr><td><strong>US fundamentals / prices</strong></td><td class="mono">FMP · EdgarTools (10-K/Q, XBRL) · SEC EDGAR</td><td>FMP also exposes 13F + ETF holdings as an alternative edge feed</td></tr>
+    </table>
+
+    <div class="signal-key amber">
+      <div class="sk-lab">★ The point-in-time rule that protects everything downstream</div>
+      <p>Holdings are disclosed on a lag (CN funds quarterly; US 13F quarterly, N-PORT monthly). Store each holdings snapshot stamped with its <strong>filing date</strong>, and never let a later disclosure overwrite an earlier as-of read. This is what lets the connection graph answer "what did I know about this overlap <em>as of</em> last Tuesday" — and what keeps any future backtest honest. The storage spine (§09) is built around exactly this.</p>
+    </div>
+  </section>
+
+  <!-- 5 CONNECTION GRAPH -->
+  <section id="graph">
+    <div class="sec-num">05 / THE CONNECTION GRAPH &amp; GRAPHRAG</div>
+    <h2>Surfacing the overlap you can't see<span class="sub">The upgrade you asked for: fund A holds B; B is falling; <em>which other funds on my lists also hold B</em> — and what else moves with it.</span></h2>
+
+    <p>This is two capabilities, and keeping them separate is what makes it trustworthy. Most of the value is a <strong>deterministic look-up</strong> — provably correct, no model involved. A thin layer of <strong>GraphRAG</strong> sits on top only for the fuzzy, second-order links a query can't name.</p>
+
+    <div class="kgframe">
+      <svg viewBox="0 0 900 360" role="img" aria-label="Connection graph: three funds all hold the same falling security 中际旭创, which is exposed to hyperscaler capex.">
+        <!-- edges fund -> security -->
+        <line class="kg-edge hot" x1="140" y1="71" x2="390" y2="87"/>
+        <line class="kg-edge hot" x1="140" y1="181" x2="390" y2="87"/>
+        <line class="kg-edge hot" x1="140" y1="291" x2="390" y2="87"/>
+        <line class="kg-edge" x1="140" y1="71" x2="390" y2="181"/>
+        <line class="kg-edge" x1="140" y1="181" x2="390" y2="181"/>
+        <line class="kg-edge" x1="140" y1="291" x2="390" y2="275"/>
+        <!-- edges security -> driver/theme -->
+        <line class="kg-edge" x1="510" y1="87" x2="740" y2="127"/>
+        <line class="kg-edge" x1="510" y1="181" x2="740" y2="127"/>
+        <line class="kg-edge" x1="510" y1="275" x2="740" y2="241"/>
+        <line class="kg-edge" x1="810" y1="144" x2="810" y2="224"/>
+        <!-- edge labels -->
+        <text class="kg-elabel" x="250" y="64">holds</text>
+        <text class="kg-elabel" x="612" y="120">exposed_to</text>
+        <!-- fund nodes -->
+        <rect class="kg-node-fund" x="20" y="54" width="120" height="34" rx="7"/><text class="kg-label" x="80" y="75" text-anchor="middle">光通信ETF</text>
+        <rect class="kg-node-fund" x="20" y="164" width="120" height="34" rx="7"/><text class="kg-label" x="80" y="185" text-anchor="middle">通信ETF</text>
+        <rect class="kg-node-fund" x="20" y="274" width="120" height="34" rx="7"/><text class="kg-label" x="80" y="295" text-anchor="middle">科创芯片ETF</text>
+        <!-- security nodes -->
+        <rect class="kg-node-sec" x="390" y="70" width="120" height="34" rx="7" style="stroke-width:2"/><text class="kg-label" x="450" y="91" text-anchor="middle">中际旭创 ↓</text>
+        <rect class="kg-node-sec" x="390" y="164" width="120" height="34" rx="7"/><text class="kg-label" x="450" y="185" text-anchor="middle">新易盛</text>
+        <rect class="kg-node-sec" x="390" y="258" width="120" height="34" rx="7"/><text class="kg-label" x="450" y="279" text-anchor="middle">兆易创新</text>
+        <!-- driver / theme nodes -->
+        <rect class="kg-node-theme" x="740" y="110" width="150" height="34" rx="7"/><text class="kg-label" x="815" y="131" text-anchor="middle">hyperscaler capex</text>
+        <rect class="kg-node-theme" x="740" y="224" width="150" height="34" rx="7"/><text class="kg-label" x="815" y="245" text-anchor="middle">AI compute (theme)</text>
+      </svg>
+      <div class="kgcap">One falling name (中际旭创) sits inside three funds on your lists at once — invisible by eye, one hop in the graph. A second hop reaches the shared driver, where a QDII you hold is also exposed.</div>
+    </div>
+
+    <h3>Capability 1 — deterministic look-through <span class="tag bull">exact · no LLM</span></h3>
+    <p>The graph stores <code>(:Fund)-[:HOLDS {weight, as_of}]->(:Security)-[:EXPOSED_TO]->(:Driver|:Theme)</code> from the holdings feeds in §04. "B is falling — who else holds B, and what's my look-through?" is then a one-hop query that is <strong>fast, exact, and auditable</strong>:</p>
+    <div class="schema"><span class="cm">// every other item on my lists exposed to a name that fell today, with look-through weight</span>
+<span class="k">MATCH</span> (s:Security)&lt;-[h:HOLDS]-(f:Fund)
+<span class="k">WHERE</span> s.ret_1d &lt;= <span class="r">-0.05</span> <span class="k">AND</span> f.on_my_list = <span class="n">true</span>
+<span class="k">RETURN</span> s.name, s.ret_1d,
+       collect({fund:f.name, weight:h.weight}) <span class="k">AS</span> exposed_funds,
+       sum(h.weight * f.my_position) <span class="k">AS</span> total_lookthrough
+<span class="k">ORDER BY</span> total_lookthrough <span class="k">DESC</span>;</div>
+    <p class="tight">This is the engine's most reliable feature precisely because no model is in the path — it is set arithmetic over disclosed holdings. It catches the "illusion of diversification" (three funds, one bet) directly, and feeds the <code>connections[]</code> block in the dashboard.</p>
+
+    <h3>Capability 2 — GraphRAG for the hidden, second-order links <span class="tag violet">fuzzy · LLM over the graph</span></h3>
+    <p>Some contagion isn't a shared holding — it's a shared <em>supplier</em>, shared <em>end-demand</em>, a <em>competitor</em>, or the same macro driver two hops away. Here the LLM reasons over the falling node's graph neighbourhood plus the news. On complex, multi-hop financial questions, graph-grounded retrieval reaches ~86% accuracy versus ~59–72% for vector-only, and ~3.4× the accuracy of plain RAG — because it follows relationships instead of matching loose text. For a single-user nightly system the right implementation is <strong>LightRAG</strong> (dual-mode graph+vector, cheap <em>incremental</em> updates as the graph grows nightly, ~70–90% of heavyweight GraphRAG quality at a fraction of the cost), with <strong>LanceDB</strong> as the embedded vector store underneath.</p>
+
+    <h4>The schema (FinDKG-inspired, kept small)</h4>
+    <div class="schema"><span class="cm">// entity types</span>  Fund/ETF · Security/Company · Theme · Driver · Supplier · Region · Person · Event · MacroFactor
+<span class="cm">// relations</span>     HOLDS · EXPOSED_TO · SUPPLIES · COMPETES_WITH · DRIVES · IMPACTS · CORRELATES_WITH · LISTED_IN · LEADS
+<span class="cm">// every edge carries  {as_of, source, valid_from, valid_to}  → the graph is TEMPORAL, point-in-time like everything else</span></div>
+    <p class="tight">Build the text-derived edges (SUPPLIES, DRIVES, IMPACTS, LEADS) with the LLM-as-extractor pattern (FinDKG's ICKG showed this runs even on a 7B model; you can use Claude). Build the hard edges (HOLDS, LISTED_IN) straight from the §04 holdings feeds — no extraction, no error. Keep <strong>rolling weekly snapshots</strong> and use graph <strong>centrality</strong> to watch which node is becoming systemically important to your book — the same technique FinDKG used to track Covid contagion week by week.</p>
+
+    <div class="signal-key violet">
+      <div class="sk-lab">★ The graduate tier (optional, human-reviewed — like Qlib was for factors)</div>
+      <p>Once the temporal graph has history, a graph neural net (FinDKG's <strong>KGTransformer</strong>) can do <em>temporal link prediction</em>: query <code>(?, produce, AI)</code> to rank companies genuinely creating a theme, or <code>(AI, impact, ?)</code> to rank who's exposed — a forward-looking thematic basket, ~15% better on link-prediction metrics than prior temporal-KG models. Treat any GNN-surfaced edge exactly like an RD-Agent factor: a <strong>candidate for review</strong>, never a drop-in. The exact look-through (Capability 1) remains the trustworthy default; the GNN is upside, not load-bearing.</p>
+    </div>
+    <p class="note">Tech honesty (see §11): the obvious embedded graph pick, KùzuDB, was <strong>archived in October 2025</strong>. For an embedded, single-writer store use its maintained successor <strong>LadybugDB</strong>; if you'd rather run a local server, <strong>Neo4j Community</strong> has the most mature GraphRAG ecosystem; and <strong>Zep/Graphiti</strong> is a temporal-KG engine that can serve the graph and the feedback memory (§06) from one technology.</p>
+  </section>
+
+  <!-- 6 FEEDBACK LOOP -->
+  <section id="feedback">
+    <div class="sec-num">06 / THE FEEDBACK LOOP</div>
+    <h2>It learns from you each night — without fine-tuning<span class="sub">You asked for a digest that takes your feedback and adjusts its judgment the next day. The modern way to do that is <em>memory</em>, not training.</span></h2>
+
+    <p>Fine-tuning a model on a handful of your daily reactions is the wrong tool — slow, expensive, and prone to forgetting. The 2026 pattern is <strong>memory-based online adaptation</strong>: store each decision and its aftermath as a <em>case</em>, and at inference time retrieve the most relevant past cases so the model conditions on them. Formalized as a memory-augmented decision process, this gives "continual, real-time adaptation without gradient updates," and adds several points of accuracy on novel tasks purely through better recall. Your corrections become retrievable lessons, not weight updates — so the next night's read reflects what you taught it, and nothing silently rots the base model.</p>
+
+    <div class="flow">
+      <div class="band">
+        <div class="blab"><span class="bn fb">1</span><span class="bt">Capture — one tap, optional why</span></div>
+        <div class="bd">On each dashboard row: <strong>agree · disagree · correct</strong>. "Correct" lets you set the lean you'd actually take and a one-line reason ("too crowded to add, whatever the trend says"). That's the whole new habit.</div>
+        <div class="chips"><span class="chip v">structured feedback record</span><span class="chip">writes to L1</span></div>
+      </div>
+      <div class="arrow fb">▼</div>
+      <div class="band">
+        <div class="blab"><span class="bn fb">2</span><span class="bt">Label the outcome — reality, not opinion</span></div>
+        <div class="bd">The nightly job stamps what actually happened after each past lean (forward return over its horizon). Now every case carries both <em>your view</em> and <em>the result</em> — the signal that tells the engine which of your instincts (and its own) are paying off.</div>
+        <div class="chips"><span class="chip v">fwd-return label</span><span class="chip v">hit / miss / abstain</span></div>
+      </div>
+      <div class="arrow fb">▼</div>
+      <div class="band">
+        <div class="blab"><span class="bn fb">3</span><span class="bt">Store as a governed case</span></div>
+        <div class="bd"><code>{state-pattern → lean → your feedback → outcome, as_of, valid_to}</code>. Raw feedback is immutable; each case has a validity window and decays, so a regime from two years ago can't dominate today.</div>
+        <div class="chips"><span class="chip v">Zep/Graphiti (temporal KG)</span><span class="chip v">or Mem0 / LanceDB table</span></div>
+      </div>
+      <div class="arrow fb">▼</div>
+      <div class="band">
+        <div class="blab"><span class="bn fb">4</span><span class="bt">Retrieve tonight — similar setups + your standing rules</span></div>
+        <div class="bd">For each item, pull the most similar past cases (by factor-state pattern + theme) and your reviewed preferences, and inject them into the digest prompt as "lessons." This is the step that makes tomorrow's judgment yours.</div>
+        <div class="chips"><span class="chip v">state-pattern similarity</span><span class="chip v">case-based recall</span></div>
+      </div>
+      <div class="arrow fb">▼</div>
+      <div class="band">
+        <div class="blab"><span class="bn fb">5</span><span class="bt">Reflect weekly — distil cases into a small rulebook</span></div>
+        <div class="bd">A weekly pass summarizes recurring, outcome-confirmed feedback into a few durable rules ("in A-shares, cap adds when crowding is extreme even if the trend gate is open"). You approve each before it joins the system prompt.</div>
+        <div class="chips"><span class="chip v">human-reviewed promotion</span><span class="chip v">≤ a dozen standing rules</span></div>
+      </div>
+    </div>
+
+    <h3>The feedback record &amp; how a lesson enters the prompt</h3>
+    <div class="schema">{
+  <span class="k">"item_id"</span>:<span class="v">"588200"</span>, <span class="k">"run_id"</span>:<span class="v">"2026-06-05T00:12Z"</span>, <span class="k">"state_fingerprint"</span>:<span class="v">"reversal=xhigh;crowding=xhigh;trend=open"</span>,
+  <span class="k">"model_lean"</span>:<span class="v">"Hold"</span>, <span class="k">"your_reaction"</span>:<span class="v">"correct"</span>, <span class="k">"your_lean"</span>:<span class="v">"Trim"</span>,
+  <span class="k">"your_reason"</span>:<span class="v">"crowding should outweigh an open trend gate at A-share extremes"</span>,
+  <span class="k">"outcome"</span>:{ <span class="k">"horizon"</span>:<span class="v">"5w"</span>, <span class="k">"fwd_return"</span>:<span class="r">-0.18</span>, <span class="k">"your_call_was"</span>:<span class="v">"right"</span> },   <span class="cm">// filled in later by the outcome job</span>
+  <span class="k">"valid_from"</span>:<span class="v">"2026-06-05"</span>, <span class="k">"valid_to"</span>:<span class="v">"2026-12-05"</span>, <span class="k">"decay"</span>:<span class="v">"half-life 90d"</span>
+}
+<span class="cm">// injected into tonight's digest as a retrieved lesson:</span>
+<span class="cm">// "PAST CASE (similar state): you overrode Hold→Trim on a stretched+crowded A-share theme; it fell 18% in 5wk.</span>
+<span class="cm">//  Weigh the crowding state accordingly here. (1 of 3 retrieved cases.)"</span></div>
+
+    <div class="signal-key">
+      <div class="sk-lab">★ Governance — so the loop improves the engine instead of corrupting it</div>
+      <p>Evolving memory has a known failure mode: errors compound when a feedback loop feeds on itself. Four guardrails keep it honest. <strong>(1) Outcome-gated:</strong> a correction only hardens into a rule once outcomes confirm it — opinions don't, results do. <strong>(2) Bounded &amp; decaying:</strong> validity windows + a half-life mean stale regimes fade; the rulebook is capped at a dozen lines. <strong>(3) Memory can't override safety:</strong> no retrieved lesson can open the 200-day trend gate or conjure a number with no source. <strong>(4) Audited:</strong> the dashboard's <code>memory_used</code> block shows exactly which cases moved the lean, so you can prune a bad lesson the moment you see it. Memory is a humble adviser the model consults — never an autopilot.</p>
+    </div>
+  </section>
+
+  <!-- 7 EMERGING -->
+  <section id="emerging">
+    <div class="sec-num">07 / THE EMERGING-THEME RADAR</div>
+    <h2>Finding satellites before the crowd<span class="sub">Spotting a theme while it's still a <em>weak signal</em> — now cross-checked against the graph, not just the text stream.</span></h2>
+
+    <p>The frame is weak-signal analysis (Ansoff): every big trend begins as faint, ambiguous noise. The job is to sort the text stream into <strong>noise → weak → strong</strong> and promote only weak signals with a real catalyst underneath. The canonical detector scores a topic by <em>how much</em> is written and <em>how fast that's growing</em> — flagging small-but-accelerating topics for review.</p>
+
+    <table class="tbl">
+      <tr><th>Step</th><th>How</th></tr>
+      <tr><td><strong>1 · Ingest a broad stream</strong></td><td>News, 券商研报, policy/规划, patents, new-fund &amp; new-index filings, 互动易 Q&amp;A, 百度指数</td></tr>
+      <tr><td><strong>2 · Cluster into themes</strong></td><td>BERTopic or an LLM tagging pass → rolling candidate topics with mention counts over time</td></tr>
+      <tr><td><strong>3 · Score (five dimensions)</strong></td><td><strong>acceleration</strong> (most important) · <strong>low base</strong> · <strong>novelty</strong> · <strong>breadth</strong> (distinct sources/companies) · <strong>catalyst strength</strong> (LLM-rated) — minus a <span style="color:var(--bear-soft)"><strong>crowding penalty</strong></span></td></tr>
+      <tr><td><strong>4 · Cross-check the graph</strong> <span class="tag violet">new</span></td><td>Is the theme a <em>new node/edge</em> in the KG (true novelty), and does it connect to a real driver or new entrant — or is it an isolated promoter's chatter?</td></tr>
+      <tr><td><strong>5 · Map to a wrapper</strong></td><td>Investable as a fund/ETF (or a fund heavily exposed)? If not, it's a watch-only idea</td></tr>
+    </table>
+
+    <div class="signal-key violet">
+      <div class="sk-lab">★ The promotion rule</div>
+      <p>Promote Emerging → Watchlist only on <strong>low base + high acceleration + a corroborated catalyst + an investable wrapper + not-yet-crowded</strong>. That precise combination separates a durable emerging theme from a hype flash. The graph cross-check (step 4) is the new guard against a single loud source masquerading as breadth.</p>
+    </div>
+    <p class="note">Lifecycle example: AI-compute optical modules were a textbook weak signal in early 2024 (small base, accelerating 研报 volume, a real hyperscaler-capex catalyst) — exactly when the radar would flag them. By mid-2026 it's the opposite: maximum crowding, "new stock king" covers; the crowding penalty now dominates and the same engine says <em>do-not-chase</em>. That round-trip is the system working.</p>
+  </section>
+
+  <!-- 8 DECISION -->
+  <section id="decision">
+    <div class="sec-num">08 / THE DECISION LAYER</div>
+    <h2>States → a calibrated, conditional lean<span class="sub">The states are legible; the LLM turns them into a defensible verdict — without the confident-nonsense failure mode, and now humbled by your own past calls.</span></h2>
+
+    <p>The literature is blunt: language models are systematically overconfident, worse in finance and worse in non-English — they favour plausible text over honest uncertainty. The states-not-composite design is the first defence (a legible band can't people-please); the decision layer adds the rest, and §06's retrieved cases add a memory of when this exact setup fooled you before.</p>
+
+    <h4>The macro bridge &amp; lead relay (recap)</h4>
+    <p>Above each theme sits the liquidity layer that moves all risk assets (state 8: Fed path, 10-yr real yield, dollar, USD/CNY) — it rarely triggers a trade; it sets the book-wide <code>risk_dial</code>. Below it runs the universal lead chain, each arrow a lead you can act on before the local names price it: <span class="mono">end-demand capex → bellwether vendor guidance → tier-1 supplier guide vs whisper → US-listed proxies → A-share names → local earnings (the laggard)</span>. In the graph these are <code>LEADS</code> edges; as a factor it's state 1 (cross-market lead).</p>
+
+    <h3>The decision schema (per item, fed by §03 + §05 + §06)</h3>
+    <div class="schema">{
+  <span class="k">"lean"</span>:<span class="v">"Accumulate|Hold|Trim|Avoid|Abstain"</span>,   <span class="cm">// gated: Avoid/Hold if below 200d MA; Abstain if blind</span>
+  <span class="k">"conviction"</span>:<span class="v">"low|med|high"</span>,            <span class="cm">// after a stated base rate; "high" needs ≥2 dated sources</span>
+  <span class="k">"thesis_intact"</span>:<span class="n">true</span>,                 <span class="cm">// states 1,4</span>
+  <span class="k">"crowding"</span>:<span class="v">"low|elevated|extreme"</span>,       <span class="cm">// states 3 — a risk read</span>
+  <span class="k">"connections_flag"</span>:<span class="v">"&lt;falling shared name / driver, if any&gt;"</span>,  <span class="cm">// from §05</span>
+  <span class="k">"flip_trigger"</span>:<span class="v">"&lt;single condition&gt;"</span>, <span class="k">"invalidation"</span>:<span class="v">"&lt;price/technical&gt;"</span>,
+  <span class="k">"action"</span>:<span class="v">"&lt;sized to capped satellite sleeve&gt;"</span>,
+  <span class="k">"downgraded_fields"</span>:[{<span class="k">"field"</span>:<span class="v">"..."</span>,<span class="k">"reason"</span>:<span class="v">"stale|single-source|conflict|forum-only"</span>}],
+  <span class="k">"memory_used"</span>:[{<span class="k">"case"</span>:<span class="v">"..."</span>,<span class="k">"lesson"</span>:<span class="v">"..."</span>}]
+}</div>
+
+    <h4>The calibration discipline</h4>
+    <ul class="clean">
+      <li><strong>Consider-the-opposite</strong> — force a bull node and a bear node, then synthesize. Deliberation beats a polite single prompt for calibration.</li>
+      <li><strong>Base-rate first</strong> — state the relevant base rate (champion's curse; what parabolic themes historically give back) <em>before</em> the conviction.</li>
+      <li><strong>Allocation &gt; timing; sin only a little</strong> — default to Hold/low conviction; lean hard only at genuine extremes. Factor timing is harder than market timing.</li>
+      <li><strong>Evidence-grounded &amp; auto-downgrade</strong> — every field cites a fetched, dated source; conflict/staleness/single-source/forum-only lowers confidence and is logged. No source → omit; never invent a number.</li>
+      <li><strong>Abstain when blind</strong> — too many invalid states, or extremes pointing opposite with no resolution → Abstain, not a guess.</li>
+    </ul>
+
+    <div class="prompt">
+      <div class="prompt-head"><span class="pt">▦ Nightly digest prompt — runs per item, emits the dashboard row</span><button class="copy-btn" onclick="copyPrompt(this)">Copy</button></div>
+      <div class="prompt-body">You are the factor-analyst seat in a decision-SUPPORT system for a retail investor running a
+core-satellite portfolio in the A-share market, using the US market as a leading indicator. You
+NEVER output orders, prices, or sizes — only a calibrated lean a human will size. Do NOT please me;
+do NOT predict the exact top/bottom. Use ONLY the supplied states, connections, retrieved cases, and
+tool-fetched evidence; never recall numbers from memory.
+
+INPUT: <span class="ph">{item, factor_states[], connections[], retrieved_cases[], evidence[], prior_evolution[]}</span>
+
+<span class="cm">1) Sanity-check each state's evidence; mark any field to downgrade (stale/single-source/conflict/forum-only).
+2) Read each state's `direction`. A-share reality: a stretched up-move (reversal xhigh) = reversal-DOWN risk,
+   NOT bullish continuation. Crowding is a RISK gauge (crash probability), not an alpha source.
+3) Note connections[]: if a shared holding/driver is falling, weigh contagion into the lean and set connections_flag.
+4) Consult retrieved_cases[]: did this state-pattern fool you (or me) before? Weigh accordingly. Cite them in memory_used.
+5) Write a 2-line BULL and a 2-line BEAR case, each citing states + sources.
+6) State the single most relevant BASE RATE for this setup.
+7) Emit the decision JSON; check BUY-EARLY / SELL-EARLY explicitly; ABSTAIN if blind.
+8) One-sentence evidence summary per source for the drill-down.</span>
+
+GATE: if trend_gate is below 200-day MA, cap the lean at Hold/Avoid no matter the states — and no retrieved
+lesson may open this gate. I read this in the morning, leave a one-tap reaction, and size from my capped sleeve.</div>
+    </div>
+  </section>
+
+  <!-- 9 STORAGE -->
+  <section id="storage">
+    <div class="sec-num">09 / STORAGE</div>
+    <h2>A local-first store that remembers <em>what it knew, when</em><span class="sub">The v2 plan said "DuckDB + Parquet." That still works — but a 2026 retail engine can do better, and the upgrade is what makes both point-in-time honesty and the connection graph cheap.</span></h2>
+
+    <p>Three different shapes of data flow through this engine, and one mistake — storing them all the same way — is what makes look-ahead bias and stale signals creep in. Prices and factors are <strong>time-series that get revised</strong>; holdings and drivers are a <strong>graph that changes each quarter</strong>; the LLM's reasoning and your feedback are <strong>text + vectors</strong>. Each gets the embedded, no-server engine built for it. Nothing here needs a database administrator or a cloud bill — it all runs from a folder on your machine.</p>
+
+    <table class="tbl">
+      <tr><th>What</th><th>2026 pick</th><th>Why it's the right shape</th></tr>
+      <tr><td class="dim">Prices, factor states, the as-of spine (L2/L3)</td><td class="mono">ArcticDB</td><td>Embedded (a <code>pip install</code>, no server), Pandas-native, and <strong>bitemporal</strong>: every write is versioned so you can ask "what did the data look like <em>as of</em> last Tuesday, before the restatement?" That is native point-in-time — the single most important property for not fooling yourself in a backtest. Built by a quant fund, proven at scale.</td></tr>
+      <tr><td class="dim">Relational / SQL queries, joins, the lakehouse layer</td><td class="mono">DuckDB + DuckLake</td><td>DuckDB stays your in-process SQL engine. <strong>DuckLake</strong> (production-managed since early 2026) upgrades "DuckDB + loose Parquet files" into a real lakehouse with ACID transactions and <strong>time-travel</strong> snapshots — a clean evolution of the v2 plan, not a rewrite.</td></tr>
+      <tr><td class="dim">The connection graph: funds ↔ holdings ↔ drivers (§05)</td><td class="mono">embedded graph DB</td><td>Stores the HOLDS / EXPOSED-TO edges as a graph so look-through is one query, not a table-scan. Keep <strong>quarterly snapshots</strong> so the graph is itself point-in-time — you can see who held what last quarter, not just today.</td></tr>
+      <tr><td class="dim">LLM notes, retrieved cases, GraphRAG vectors (L1/L4)</td><td class="mono">LanceDB</td><td>Embedded vector store on Arrow/Parquet — fast similarity search with no server. It is the <strong>default vector store inside Microsoft's GraphRAG</strong>, so it drops straight into the §05 retrieval layer and the §06 case memory.</td></tr>
+    </table>
+
+    <div class="signal-key">
+      <div class="sk-lab">⛁ The one rule that ties the store together</div>
+      <p><strong>Point-in-time, everywhere.</strong> Prices, factor states, <em>and</em> the holdings graph all carry an as-of stamp. When the engine reasons tonight, it sees only what was knowable tonight; when you replay last month, it sees only last month. Bitemporal time-series (ArcticDB) + snapshotted graph + time-travel SQL (DuckLake) means every layer can answer "what did we know, and when did we know it" — which is the whole game in not lying to yourself about a signal.</p>
+    </div>
+
+    <p class="note">You do not need all four on day one. The honest minimum to start is DuckDB + Parquet (exactly the v2 plan) plus a single LanceDB folder for the LLM's memory. Add ArcticDB the moment you start backtesting factor states across revisions; add the graph DB when list 4 — connections — goes live. The point is that each upgrade is additive and local, never a migration to a server you have to babysit.</p>
+  </section>
+
+  <!-- 10 ROBUST -->
+  <section id="robust">
+    <div class="sec-num">10 / DURABILITY</div>
+    <h2>Keeping it honest for years<span class="sub">Three things rot a system like this: an overfit factor set, a memory that drifts, and signals that quietly stop working. Each has a specific defense.</span></h2>
+
+    <p>The v3 design starts with a structural advantage: by emitting <strong>descriptive factor states the LLM reads</strong> rather than a fitted composite score (§03), there are far fewer knobs to overfit. You are not tuning eight weights until a backtest gleams — you are reporting whether each factor is high, neutral, or low against logic-based bands. <em>Overfitting is a disease of optimization; the cure is having little to optimize.</em> But the moment you backtest anything — a band, a gate, the rotation itself — the quant literature's defenses apply, so bake them in.</p>
+
+    <table class="tbl">
+      <tr><th>Discipline</th><th>What it protects against</th></tr>
+      <tr><td><strong>Deflated Sharpe Ratio (DSR)</strong></td><td>Corrects a result's Sharpe for <em>how many variants you tried</em> plus non-normality. A gleaming in-sample Sharpe is a statistical mirage if it's the best of 100 trials — DSR tells you whether it survives that correction.</td></tr>
+      <tr><td><strong>Probability of Backtest Overfitting (PBO)</strong></td><td>Via combinatorially-purged CV: estimates the chance your chosen config ranks <em>below median</em> out-of-sample. High PBO means you fit the noise, not the signal.</td></tr>
+      <tr><td><strong>Purged / embargoed CV (CPCV)</strong></td><td>Cross-validation that purges overlapping labels and embargoes a time gap so future data can't leak backward into training. Preferred over plain walk-forward whenever labels span multiple days.</td></tr>
+      <tr><td><strong>Parameter-stability score</strong></td><td>The share of nearby settings (±10–20% on any band) that stay profitable. Above ~70–80% means a robust plateau, not a knife-edge fit you'll fall off live.</td></tr>
+      <tr><td><strong>After-cost &amp; point-in-time, always</strong></td><td>Report after fees/slippage; reason only on as-of data (§09). The bitemporal store exists precisely to kill leakage-driven inflation — use it, don't bypass it for convenience.</td></tr>
+    </table>
+
+    <div class="signal-key violet">
+      <div class="sk-lab">⊘ Governing the memory so it learns without drifting</div>
+      <p>An evolving memory can <strong>accumulate errors</strong> — a wrong lesson, once stored, can be retrieved forever and quietly compound. The §06 loop is built against exactly this. Four rules, non-negotiable: <strong>(1) outcome-gated promotion</strong> — a case becomes a durable lesson only after its outcome is labelled, never on your reaction alone; <strong>(2) validity windows + decay</strong> — lessons carry a freshness date and fade unless re-confirmed, so an old regime can't rule a new one; <strong>(3) memory never overrides the safety gate or invents a number</strong> — no retrieved lesson can open the 200-day trend gate or fabricate data; <strong>(4) every lesson is audited</strong> — it shows up in the dashboard's <code>memory_used</code> block, so you can always see, and veto, what the system "learned."</p>
+    </div>
+
+    <div class="signal-key amber">
+      <div class="sk-lab">★ The durability rules of thumb</div>
+      <p><strong>Prefer states to a tuned blend.</strong> <strong>Prefer robust, well-documented factors</strong> — reversal, turnover/illiquidity, the cross-market lead — to exotic ones you found yesterday. <strong>Treat any auto-discovered factor or GNN link-prediction as a candidate</strong> for human review and out-of-sample testing, never a drop-in. And remember factors <em>decay as they crowd</em>: momentum's premium has thinned for years; crowding now signals crash risk more than alpha. So re-check the engine's own hit-rate quarterly, watch the dispersion, and retire what stops working before it costs you.</p>
+    </div>
+  </section>
+
+  <!-- 11 BUILD -->
+  <section id="build">
+    <div class="sec-num">11 / BUILD IT</div>
+    <h2>The stack &amp; the nightly job<span class="sub">Everything below is open-source or free-tier, local-first, and chosen to speak "LLM" natively. Build bottom-up; the engine is useful at every phase, not just the last one.</span></h2>
+
+    <table class="tbl">
+      <tr><th>Layer</th><th>Pick</th><th>Role</th></tr>
+      <tr><td class="dim">Ingestion — CN (L1)</td><td class="mono">AkShare · Tushare Pro</td><td>Prices &amp; indices; quarterly fund holdings + industry/asset allocation for the graph edges. Dual-source cross-validation (§04).</td></tr>
+      <tr><td class="dim">Ingestion — US lead (L1)</td><td class="mono">EdgarTools · FRED</td><td>13F + monthly N-PORT fund holdings (US graph edges); rates/dollar/liquidity macro for the relay (§04, §08).</td></tr>
+      <tr><td class="dim">Time-series store (L2)</td><td class="mono">ArcticDB</td><td>Bitemporal, embedded, Pandas-native — the as-of spine for prices &amp; factor states (§09).</td></tr>
+      <tr><td class="dim">Relational / lakehouse (L2)</td><td class="mono">DuckDB + DuckLake</td><td>In-process SQL + ACID, time-travel snapshots over the data folder (§09).</td></tr>
+      <tr><td class="dim">Connection graph (L2/L5)</td><td class="mono">embedded graph DB + LightRAG</td><td>Quarterly-snapshotted HOLDS/EXPOSED-TO edges; deterministic look-through (exact query) + GraphRAG for fuzzy 2nd-order links (§05).</td></tr>
+      <tr><td class="dim">Vector / memory store (L1/L4)</td><td class="mono">LanceDB</td><td>Embedded vectors for retrieved cases (§06) and GraphRAG neighborhoods — GraphRAG's default store (§09).</td></tr>
+      <tr><td class="dim">Factor states (L3)</td><td class="mono">signal_core</td><td>Per-factor descriptive states + per-factor failure isolation; emits the §02 dashboard contract — states, not a composite (§03).</td></tr>
+      <tr><td class="dim">Theme discovery (L3)</td><td class="mono">BERTopic + LLM tagging</td><td>Cluster the text stream into emerging-theme candidates for list 3 (§07).</td></tr>
+      <tr><td class="dim">Digest + council (L4)</td><td class="mono">LangGraph + MCP/FastMCP</td><td>Tool-calling + a consider-the-opposite bull/bear deliberation; strict-JSON, abstain-on-bad-output (§08).</td></tr>
+      <tr><td class="dim">Feedback loop (L1↔L7)</td><td class="mono">case memory (Mem0 / Graphiti)</td><td>Capture your one-tap reaction → label outcome → store as a governed, decaying case for tomorrow's retrieval (§06).</td></tr>
+      <tr><td class="dim">Robustness (when backtesting)</td><td class="mono">DSR / PBO / CPCV</td><td>López de Prado toolkit + parameter-stability heatmaps before trusting any tuned band (§10).</td></tr>
+      <tr><td class="dim">ML / graph R&amp;D (graduate)</td><td class="mono">Qlib · temporal GNN</td><td>Auto-discovered factors &amp; temporal link-prediction — candidate generators, human-reviewed, never drop-ins (§05, §10).</td></tr>
+      <tr><td class="dim">Scheduler</td><td class="mono">Prefect (or cron)</td><td>The 00:0x nightly run → <code>dashboard.json</code>.</td></tr>
+    </table>
+
+    <div class="signal-key">
+      <div class="sk-lab">⌁ The contract that holds it together</div>
+      <p>Every layer reads and writes one thing: the <strong><code>dashboard.json</code></strong> from §02 — three lists, factor <code>states[]</code>, <code>connections[]</code>, and the <code>memory_used[]</code> audit trail. Build any layer against that contract and you can swap a component without touching the rest. The morning view is just this file rendered.</p>
+    </div>
+
+    <h4>The phases (stop anywhere — each is independently useful)</h4>
+    <ol>
+      <li><strong>States + nightly job</strong>: wire <code>signal_core</code> to AkShare/FRED/EdgarTools, store to DuckDB, schedule it, emit <code>dashboard.json</code>. You now have the disciplined morning view.</li>
+      <li><strong>Connections live</strong>: load quarterly holdings into the graph DB; turn on deterministic look-through (list 4). This is the cheapest, highest-value upgrade — exact, auditable, no LLM needed.</li>
+      <li><strong>Feedback loop</strong>: add the one-tap reaction, outcome-labelling, and governed case memory so the digest adapts to you overnight (§06).</li>
+      <li><strong>GraphRAG + emerging radar</strong>: add LightRAG over the neighborhood for fuzzy links, and BERTopic theme clustering for list 3.</li>
+      <li><strong>Graduate</strong>: ArcticDB bitemporal backtesting; Qlib / temporal-GNN candidates, human-reviewed against DSR/PBO.</li>
+    </ol>
+  </section>
+
+  <!-- 12 VERIFY -->
+  <section id="verify">
+    <div class="sec-num">12 / DOES IT WORK?</div>
+    <h2>Every piece, double-checked<span class="sub">You asked for proof the engine will actually run before you commit to it. Here is each technology, checked against its state as of June 2026 — what's proven, what's current, and where the honest catch is.</span></h2>
+
+    <table class="tbl">
+      <tr><th>Technology</th><th>Status</th><th>Evidence it works</th><th>The catch</th></tr>
+      <tr><td class="mono">AkShare / Tushare</td><td><span class="chip c">current</span></td><td>Actively maintained, free CN market + fund-holdings data; the standard retail/community stack, used with dual-source cross-validation.</td><td>Northbound real-time was discontinued mid-2024 — use post-close turnover, top-active lists, and quarterly holdings instead.</td></tr>
+      <tr><td class="mono">EdgarTools</td><td><span class="chip c">current</span></td><td>Maintained Python SEC client, no API key; parses 13F + monthly N-PORT into clean tables — the US holdings-graph source.</td><td>N-PORT publishes monthly with a lag; treat it as a slow, structural signal, not a real-time feed.</td></tr>
+      <tr><td class="mono">ArcticDB</td><td><span class="chip c">current</span></td><td>Built and open-sourced by a quant fund, proven at petabyte scale; native bitemporal versioning = real point-in-time. Embedded, Pandas-native.</td><td>Overkill on day one — start on DuckDB, adopt when you begin backtesting across data revisions.</td></tr>
+      <tr><td class="mono">DuckDB + DuckLake</td><td><span class="chip c">current</span></td><td>DuckDB is battle-tested; DuckLake reached managed-production in early 2026, adding ACID + time-travel over your Parquet folder.</td><td>DuckLake is the youngest piece here — DuckDB + plain Parquet (the v2 plan) is the conservative fallback if you want maximum stability.</td></tr>
+      <tr><td class="mono">LanceDB</td><td><span class="chip c">current</span></td><td>Embedded vector DB on Arrow/Parquet; ships as the <em>default</em> vector store inside Microsoft GraphRAG, so it's proven in exactly this role.</td><td>None material for single-user scale.</td></tr>
+      <tr><td class="mono">LightRAG</td><td><span class="chip c">current</span></td><td>Actively maintained, thousands of stars; dual graph+vector retrieval with cheap <em>incremental</em> updates — ~70–90% of full-GraphRAG quality at a fraction of the cost.</td><td>The quality gap vs Microsoft GraphRAG only shows on global "summarize the whole corpus" queries — not this engine's targeted look-through.</td></tr>
+      <tr><td class="mono">graph DB</td><td><span class="chip a">verify</span></td><td>The pattern is sound and the template (FinDKG: typed financial entities, rolling weekly snapshots, contagion centrality) is published and validated.</td><td><strong>Honest note:</strong> KùzuDB — an obvious embedded pick — was <em>archived in late 2025</em>. Use a maintained successor (e.g. LadybugDB) or Neo4j Community (heavier, but the most mature GraphRAG ecosystem). Confirm maintenance before you commit.</td></tr>
+      <tr><td class="mono">case memory</td><td><span class="chip c">current</span></td><td>Memory-based online adaptation (store experience → retrieve similar → condition) is a 2025–26 result showing real OOD gains with <em>no</em> fine-tuning. Mem0 / Graphiti are mature libraries.</td><td>Evolving memory can accumulate errors — only safe with the §06/§10 governance (outcome-gating, decay, audit, no gate-override).</td></tr>
+      <tr><td class="mono">LangGraph council</td><td><span class="chip c">current</span></td><td>Widely used for multi-step / multi-agent LLM workflows; consider-the-opposite deliberation measurably improves calibration over a single prompt.</td><td>More agents = more tokens &amp; latency. Two seats (bull/bear) is plenty for a nightly batch.</td></tr>
+      <tr><td class="mono">temporal GNN</td><td><span class="chip v">graduate</span></td><td>FinDKG's link-prediction (forward thematic exposure) showed a meaningful uplift over baselines in published tests.</td><td><strong>Experimental tier only.</strong> A candidate generator for human review — never an auto-trader, never wired to orders.</td></tr>
+    </table>
+
+    <div class="signal-key">
+      <div class="sk-lab">✓ Two tiers — and the line between them</div>
+      <p><strong>Proven &amp; ready to kick off today:</strong> the data sources, the embedded stores (ArcticDB / DuckDB+DuckLake / LanceDB), the factor <em>states</em>, the <strong>deterministic look-through graph query</strong>, the LLM digest with consider-the-opposite, and the governed feedback loop. Every one is maintained and used in production somewhere. <strong>Graduate tier, human-reviewed only:</strong> GraphRAG fuzzy-link inference and temporal-GNN link prediction — powerful, but treated as candidates, not commands. The line is simple: anything that could move size is either an exact, auditable query or a human decision — never an experimental model's guess.</p>
+    </div>
+
+    <div class="signal-key amber">
+      <div class="sk-lab">★ Kick-off readiness — the minimum that works</div>
+      <p>You can start the project now with Phase 1 + 2 alone: <code>signal_core</code> states on AkShare/FRED data, stored in DuckDB, scheduled nightly, plus the deterministic fund→holding look-through. That stack is entirely proven technology, answers your motivating question (<em>"which of my funds also hold the thing that's falling?"</em>) with an exact query, and needs no experimental piece. Everything else — bitemporal backtesting, GraphRAG, the feedback loop, GNNs — layers on additively, each independently useful, none blocking the launch. <strong>The engine works because the load-bearing parts are boring and the clever parts are optional.</strong></p>
+    </div>
+  </section>
+
+  <!-- 13 LIMITS -->
+  <section id="limits">
+    <div class="sec-num">13 / LIMITS &amp; DISCIPLINE</div>
+    <h2>What it is, and isn't<span class="sub">Re-read whenever the dashboard sounds certain. The new pieces — connections, a self-correcting memory — add power and new ways to fool yourself.</span></h2>
+    <div class="bb">
+      <div class="col-bull">
+        <h4>▲ What the engine gives you</h4>
+        <ul class="clean">
+          <li><strong>A durable process</strong>: the same disciplined nightly read on any theme, for years — states and evidence, not a vibe.</li>
+          <li><strong>Connection awareness</strong>: when a holding falls, an exact query shows every fund on your lists exposed to it — contagion you'd otherwise miss.</li>
+          <li><strong>Less lag</strong>: the US→China relay and leading factors buy days-to-weeks over a crowd watching reported earnings.</li>
+          <li><strong>A system that learns you</strong>: a governed memory that stops repeating the mistakes you flagged yesterday.</li>
+        </ul>
+      </div>
+      <div class="col-bear">
+        <h4>▼ What it cannot do</h4>
+        <ul class="clean">
+          <li><strong>Predict tops/bottoms.</strong> Leads and graphs cut lag and surface links — they don't remove uncertainty.</li>
+          <li><strong>Trust a recalled number.</strong> Fetch-don't-recall; the memory stores <em>lessons</em>, never figures to quote back.</li>
+          <li><strong>Outlast its own discipline.</strong> Factors decay; a memory can drift; an overfit band rots. Govern and re-validate.</li>
+          <li><strong>Replace your judgment.</strong> A tool that agrees faster — or now, one that "remembers" agreeing — is more dangerous than none.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="signal-key violet">
+      <div class="sk-lab">The shape of using it well</div>
+      <p>Funds/ETFs only, satellites capped, the boring broad-index core compounding underneath. The connection graph and the feedback loop don't change the goal — they sharpen it. The engine's gift was never more trades; it's <strong>better-timed, fewer, calmer ones</strong>, each with a written reason, each checked against what you've learned. Most mornings the right action is none. <strong>Patience is a position.</strong></p>
+    </div>
+  </section>
+
+  <!-- SOURCES -->
+  <section id="sources">
+    <div class="sec-num">14 / SOURCES</div>
+    <h2>Verify before you trust<span class="sub">The research behind the v3 upgrades — connections, the feedback loop, modern storage — plus the factor and durability work carried from the prior edition. Paraphrased; check each primary source before relying on it.</span></h2>
+
+    <details>
+      <summary>Connection graph, GraphRAG &amp; financial knowledge graphs</summary>
+      <div class="dbody">
+        <p class="src"><strong>Financial KG template:</strong> FinDKG — a dynamic financial knowledge graph with typed entities/relations, an LLM-as-extractor, rolling weekly temporal snapshots, and composite-centrality contagion analysis; temporal link-prediction for forward thematic exposure (project site <a href="https://xiaohui-victor-li.github.io/FinDKG/">xiaohui-victor-li.github.io/FinDKG</a>; SSRN 4608445).</p>
+        <p class="src"><strong>GraphRAG methods:</strong> Microsoft GraphRAG (community detection + global/local query; LanceDB as default vector store); <strong>LightRAG</strong> (dual graph+vector retrieval, cheap incremental updates) — <a href="https://github.com/HKUDS/LightRAG">github.com/HKUDS/LightRAG</a>; nano-graphrag (minimal hackable implementation). Reported gains for graph-augmented retrieval over vector-only on multi-hop financial questions.</p>
+        <p class="src"><strong>Graph stores:</strong> Neo4j Community (most mature GraphRAG ecosystem); embedded options — note <strong>KùzuDB was archived in late 2025</strong>, so confirm a maintained successor (e.g. LadybugDB) before adopting; Zep/Graphiti for a temporal knowledge graph that doubles as the memory layer.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Self-correcting memory &amp; the feedback loop</summary>
+      <div class="dbody">
+        <p class="src"><strong>Learning from feedback without fine-tuning:</strong> memory-based online adaptation — store {state → lean → feedback → outcome} as cases, retrieve similar ones, condition the next decision; reported out-of-sample gains with no gradient updates (AgentFly / Memento line, arXiv 2508.16153).</p>
+        <p class="src"><strong>Memory frameworks:</strong> Mem0 (personalization); Zep/Graphiti (temporal KG storing fact-validity windows; strong LongMemEval results); LangMem, Letta, MemMachine — the 2025–26 agent-memory landscape.</p>
+        <p class="src"><strong>The guardrail:</strong> self-evolving memory can <em>accumulate errors</em> over time — motivating outcome-gated promotion, validity windows + decay, and audited use (arXiv 2603.11768). Memory must never override the safety gate or supply numbers.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Factors &amp; the 2026 evidence that shaped the states</summary>
+      <div class="dbody">
+        <p class="src"><strong>Crowding = risk, not alpha:</strong> crowded factors show materially higher crash probability while crowding-based selection earns little; treat crowding as a crash gauge, not a return source (arXiv 2512.11913).</p>
+        <p class="src"><strong>Reversal's mechanism:</strong> turnover/liquidity and Amihud illiquidity are consistent drivers of short-term reversal — the structural reason reversal dominates in the A-share market (PMC5125680; Amihud 2002).</p>
+        <p class="src"><strong>Momentum, decayed &amp; crowded:</strong> the momentum premium has thinned over decades and sits at wide dispersion (e.g. JP Morgan Factor Views, 2Q 2026); short-term reversal is the robust exception (Ehsani &amp; Linnainmaa, NBER). Simplicity holds up: equal-weight (1/N) beats many optimizers out-of-sample (DeMiguel, Garlappi &amp; Uppal).</p>
+        <p class="src"><strong>Carried from the prior edition:</strong> S&amp;P multi-factor methodology (z-scores); Antonacci dual-momentum (absolute + relative); emerging-theme / weak-signal detection — BERTrend (arXiv 2411.05930), WISDOM (arXiv 2409.15340), Ansoff weak signals.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Modern local-first storage</summary>
+      <div class="dbody">
+        <p class="src"><strong>Bitemporal time-series:</strong> ArcticDB — embedded, Pandas-native, versioned/as-of storage built by Man Group (<a href="https://github.com/man-group/ArcticDB">github.com/man-group/ArcticDB</a>).</p>
+        <p class="src"><strong>Lakehouse / time-travel SQL:</strong> DuckDB + <strong>DuckLake</strong> (relational-metadata lakehouse with ACID + snapshots; managed-production in early 2026) — <a href="https://ducklake.select/">ducklake.select</a>; Apache Iceberg as the heavier snapshot-based alternative.</p>
+        <p class="src"><strong>Embedded vectors:</strong> LanceDB on Arrow/Parquet (<a href="https://github.com/lancedb/lancedb">github.com/lancedb/lancedb</a>) — GraphRAG's default vector store.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Data sources — China &amp; the US lead</summary>
+      <div class="dbody">
+        <p class="src"><strong>China:</strong> AkShare (free, eastmoney-backed) — prices via <code>stock_zh_a_hist</code>/<code>index_zh_a_hist</code>; graph edges via <code>fund_report_stock_cninfo</code> (基金重仓股), <code>fund_report_industry_allocation_cninfo</code>, <code>fund_report_asset_allocation_cninfo</code> (<a href="https://akshare.akfamily.xyz/">akshare.akfamily.xyz</a>); Tushare Pro as the normalized, cross-validation source. Northbound real-time was discontinued mid-2024.</p>
+        <p class="src"><strong>US (leading indicator):</strong> EdgarTools for 13F + monthly Form N-PORT fund holdings (<a href="https://github.com/dgunning/edgartools">github.com/dgunning/edgartools</a>); FRED macro series — DGS10, DFII10, T10YIE, DTWEXBGS, DEXCHUS, WALCL. Lead chain: hyperscaler capex → AI compute (NVDA/Broadcom) → optical/networking (Coherent, Lumentum, Ciena, Arista) → memory (TrendForce) → TSMC monthly revenue → the SOX overnight.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Quant tooling, anti-overfitting &amp; LLM calibration</summary>
+      <div class="dbody">
+        <p class="src"><strong>Tooling:</strong> Microsoft Qlib + RD-Agent — <a href="https://github.com/microsoft/qlib">github.com/microsoft/qlib</a> (point-in-time DB; RD-Agent-Quant, arXiv 2505.15155); awesome-quant (vectorbt, alphalens, pyfolio, pandas-ta).</p>
+        <p class="src"><strong>Robustness:</strong> Bailey &amp; López de Prado — "The Deflated Sharpe Ratio" (SSRN 2460551) &amp; "The Probability of Backtest Overfitting"; CPCV vs walk-forward; Harvey &amp; Liu, "…and the Cross-Section of Expected Returns" / "Lucky Factors."</p>
+        <p class="src"><strong>LLM calibration:</strong> explicit-bias evaluation in finance (arXiv 2602.14233); LLM overconfidence / FermiEval (arXiv 2510.26995); consider-the-opposite for calibration; TradingAgents (arXiv 2412.20138) and its CN fork as council templates.</p>
+      </div>
+    </details>
+  </section>
+
+  <footer>
+    <div class="disc">
+      <b>Not financial advice.</b> This is an educational, technical synthesis of publicly reported information as of <b>June 5, 2026</b>, prepared to help you build your own research tooling — not a recommendation to buy, sell, or hold any fund or security, and not a guarantee that any tool, source, API, model, factor, graph, or signal described will be accurate, available, maintained, free, or fit for purpose. Software changes and projects are archived without notice — verify each dependency is still maintained before you depend on it. Backtested and historical results do not predict future returns; factors decay, memories drift, and signals fail; a model's confidence — or its recollection of agreeing with you — is not evidence. Figures move constantly and may already be stale; verify at the primary source before acting. Markets carry risk; you alone bear your decisions and outcomes.
+    </div>
+    <div class="foot-meta">
+      ◆ WEALTH-ASSISTANT ENGINE · v3 — connected, self-correcting edition<br>
+      Nightly batch → factor states → connection graph → LLM digest → dashboard (holdings · watchlist · emerging · connections) → your morning review → feedback → tomorrow<br>
+      Synthesis date: 2026-06-05 · States over composites · Deterministic look-through + governed memory · Verify before use
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  function copyPrompt(btn){
+    var body = btn.closest('.prompt').querySelector('.prompt-body');
+    var txt = body.innerText;
+    function done(){var o=btn.innerText;btn.innerText='Copied ✓';btn.classList.add('copied');setTimeout(function(){btn.innerText=o;btn.classList.remove('copied');},1600);}
+    if(navigator.clipboard && navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(function(){fallback(txt,done);});}
+    else { fallback(txt,done); }
+  }
+  function fallback(txt,cb){var ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+  var links = Array.prototype.slice.call(document.querySelectorAll('#navlinks a'));
+  var secs = links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  var obs = new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){var id='#'+e.target.id;links.forEach(function(a){a.classList.toggle('active', a.getAttribute('href')===id);});}});},{rootMargin:'-45% 0px -50% 0px'});
+  secs.forEach(function(s){if(s)obs.observe(s);});
+</script>
+</body>
+</html>
