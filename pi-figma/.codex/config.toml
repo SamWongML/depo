@@ -1,0 +1,28 @@
+# ── Figma MCP: defined, but dormant. Never loads in an ordinary session. ──
+[mcp_servers.figma]
+url = "https://mcp.figma.com/mcp"
+enabled = false                     # the whole point: off by default
+enabled_tools = ["get_variable_defs", "get_design_context"]
+disabled_tools = ["use_figma", "generate_figma_design", "create_new_file", "upload_assets", "generate_diagram"]
+startup_timeout_sec = 30
+tool_timeout_sec = 120
+default_tools_approval_mode = "approve"
+required = false
+
+# ── Profile used only by the `figma` CLI's two fallback commands ──
+[profiles.figma]
+model = "gpt-5.6-luna"
+model_reasoning_effort = "low"
+
+# Honored on builds where profile-scoped MCP works; harmless where it doesn't,
+# because the wrapper also passes -c mcp_servers.figma.enabled=true.
+[profiles.figma.mcp_servers.figma]
+enabled = true
+
+# ── Optional: escalation profile for a design you can't parse from `spec` ──
+[profiles.figma-deep]
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+
+[profiles.figma-deep.mcp_servers.figma]
+enabled = true
