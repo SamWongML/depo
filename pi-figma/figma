@@ -1,0 +1,244 @@
+#!/usr/bin/env node
+/**
+ * figma — deterministic Figma reads for frontend work.
+ * One HTTPS request per command. No agent, no model, no tokens burned.
+ * Falls back to `codex exec` ONLY for data the REST API gates (see: vars, ctx).
+ *
+ * Env:
+ *   FIGMA_TOKEN            required. Personal access token.
+ *   FIGMA_CACHE_TTL_MIN    default 120
+ *   FIGMA_CACHE_DIR        default $TMPDIR/figma-cache
+ *   FIGMA_NO_CACHE=1       bypass cache for this call
+ */
+'use strict';
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFileSync } = require('child_process');
+
+const API = 'https://api.figma.com';
+const TOKEN = process.env.FIGMA_TOKEN;
+const CACHE = process.env.FIGMA_CACHE_DIR || path.join(os.tmpdir(), 'figma-cache');
+const TTL = (Number(process.env.FIGMA_CACHE_TTL_MIN) || 120) * 60_000;
+
+const die = (m) => { console.error('figma: ' + m); process.exit(1); };
+const flag = (a, n, d) => { const i = a.indexOf(n); return i === -1 ? d : a[i + 1]; };
+
+function target(input) {
+  if (!input) die('missing Figma URL or fileKey');
+  const k = String(input).match(/(?:file|design|board|proto|slides)\/([A-Za-z0-9]+)/);
+  const n = String(input).match(/node[-_]?id=([0-9]+[:-][0-9]+)/i);
+  return {
+    key: k ? k[1] : String(input).split(/[/?#]/)[0],
+    node: n ? n[1].replace('-', ':') : null,
+  };
+}
+
+async function api(route, { cache = true } = {}) {
+  if (!TOKEN) die('FIGMA_TOKEN is not set');
+  const f = path.join(CACHE, Buffer.from(route).toString('base64url').slice(0, 150) + '.json');
+  if (cache && !process.env.FIGMA_NO_CACHE && fs.existsSync(f) && Date.now() - fs.statSync(f).mtimeMs < TTL) {
+    return JSON.parse(fs.readFileSync(f, 'utf8'));
+  }
+  const res = await fetch(API + route, { headers: { 'X-Figma-Token': TOKEN } });
+  if (res.status === 429) {
+    die(`rate limited; retry after ${res.headers.get('retry-after') || '?'}s ` +
+        `(plan=${res.headers.get('x-figma-plan-tier')}, type=${res.headers.get('x-figma-rate-limit-type')})`);
+  }
+  if (res.status === 403) die('403 — token lacks the scope for this endpoint, or your plan gates it');
+  if (!res.ok) die(`${res.status} ${res.statusText} on ${route}`);
+  const json = await res.json();
+  if (cache) { fs.mkdirSync(CACHE, { recursive: true }); fs.writeFileSync(f, JSON.stringify(json)); }
+  return json;
+}
+
+/* ---------- formatting ---------- */
+
+const hex = (c) => c ? '#' + ['r', 'g', 'b'].map(k => Math.round(c[k] * 255).toString(16).padStart(2, '0')).join('')
+  + (c.a !== undefined && c.a < 0.999 ? Math.round(c.a * 255).toString(16).padStart(2, '0') : '') : '';
+
+const paint = (p) => !p || !p.length ? null : p.filter(x => x.visible !== false).map(x =>
+  x.type === 'SOLID' ? hex(x.color) : x.type.toLowerCase()).join(', ') || null;
+
+function box(n) {
+  const b = n.absoluteBoundingBox;
+  return b ? `${Math.round(b.width)}x${Math.round(b.height)}` : '';
+}
+
+function layout(n) {
+  if (n.layoutMode !== 'HORIZONTAL' && n.layoutMode !== 'VERTICAL') return '';
+  const pad = [n.paddingTop, n.paddingRight, n.paddingBottom, n.paddingLeft].map(v => v || 0);
+  const bits = [n.layoutMode === 'HORIZONTAL' ? 'row' : 'col'];
+  if (n.itemSpacing) bits.push(`gap:${n.itemSpacing}`);
+  if (pad.some(v => v)) bits.push(`pad:${pad.join('/')}`);
+  if (n.primaryAxisAlignItems) bits.push(`main:${n.primaryAxisAlignItems.toLowerCase()}`);
+  if (n.counterAxisAlignItems) bits.push(`cross:${n.counterAxisAlignItems.toLowerCase()}`);
+  return ' [' + bits.join(' ') + ']';
+}
+
+function typography(n) {
+  const s = n.style;
+  if (!s) return '';
+  const lh = s.lineHeightPx ? `/${Math.round(s.lineHeightPx)}` : '';
+  const ls = s.letterSpacing ? ` ls:${+s.letterSpacing.toFixed(2)}` : '';
+  return ` [${s.fontFamily} ${s.fontWeight} ${Math.round(s.fontSize)}${lh}${ls}]`;
+}
+
+function describe(n, styleMap) {
+  const out = [];
+  if (n.styles) {
+    for (const [slot, id] of Object.entries(n.styles)) {
+      if (styleMap[id]) out.push(`${slot}=${styleMap[id].name}`);  // published style name = your token name
+    }
+  }
+  const f = paint(n.fills);
+  if (f && !(n.styles && n.styles.fill)) out.push(`fill:${f}`);
+  const st = paint(n.strokes);
+  if (st) out.push(`stroke:${st}${n.strokeWeight ? '/' + n.strokeWeight : ''}`);
+  if (n.cornerRadius) out.push(`radius:${n.cornerRadius}`);
+  else if (n.rectangleCornerRadii) out.push(`radius:${n.rectangleCornerRadii.join('/')}`);
+  if (n.opacity !== undefined && n.opacity < 1) out.push(`opacity:${+n.opacity.toFixed(2)}`);
+  (n.effects || []).filter(e => e.visible !== false).forEach(e =>
+    out.push(`${e.type.toLowerCase()}(${e.radius || 0}${e.color ? ' ' + hex(e.color) : ''})`));
+  if (n.boundVariables) out.push(`vars:${Object.keys(n.boundVariables).join('+')}`);
+  if (n.componentId) out.push(`instanceOf:${n.componentId}`);
+  return out.length ? ' {' + out.join(' ') + '}' : '';
+}
+
+function walk(n, styleMap, depth, max, lines) {
+  if (depth > max || n.visible === false) return;
+  const text = n.type === 'TEXT' && n.characters
+    ? ' "' + n.characters.replace(/\s+/g, ' ').slice(0, 80) + '"' : '';
+  lines.push(`${'  '.repeat(depth)}${n.type} ${n.name} (${n.id}) ${box(n)}` +
+             `${layout(n)}${typography(n)}${text}${describe(n, styleMap)}`);
+  (n.children || []).forEach(c => walk(c, styleMap, depth + 1, max, lines));
+}
+
+/* ---------- commands ---------- */
+
+async function nodes(t, depth) {
+  if (!t.node) die('this command needs a link with ?node-id= (right-click layer → Copy link to selection)');
+  const j = await api(`/v1/files/${t.key}/nodes?ids=${encodeURIComponent(t.node)}${depth ? `&depth=${depth}` : ''}`);
+  const entry = j.nodes[t.node] || Object.values(j.nodes)[0];
+  if (!entry) die('node not found — check the link and your access to the file');
+  return entry;
+}
+
+async function cmdSpec(args, maxDepth) {
+  const entry = await nodes(target(args[0]), maxDepth + 1);
+  const lines = [];
+  walk(entry.document, entry.styles || {}, 0, maxDepth, lines);
+  console.log(lines.join('\n'));
+}
+
+async function cmdPng(args) {
+  const t = target(args[0]);
+  const fmt = flag(args, '--format', 'png');
+  const scale = flag(args, '--scale', '2');
+  const out = flag(args, '-o', `./figma-${t.node ? t.node.replace(':', '-') : t.key}.${fmt}`);
+  const j = await api(`/v1/images/${t.key}?ids=${encodeURIComponent(t.node)}&format=${fmt}&scale=${scale}`, { cache: false });
+  const url = j.images[t.node];
+  if (!url) die('Figma returned no image for that node');
+  fs.writeFileSync(out, Buffer.from(await (await fetch(url)).arrayBuffer()));
+  console.log(path.resolve(out));
+}
+
+async function cmdAssets(args) {
+  const t = target(args[0]);
+  const dir = args[1] || './assets';
+  const fmt = flag(args, '--format', 'svg');
+  const entry = await nodes(t);
+  const ids = [];
+  (function collect(n) {
+    if (n.type === 'VECTOR' || n.type === 'BOOLEAN_OPERATION' ||
+        (n.exportSettings && n.exportSettings.length) ||
+        (n.type === 'INSTANCE' && /icon/i.test(n.name))) ids.push([n.id, n.name]);
+    (n.children || []).forEach(collect);
+  })(entry.document);
+  if (!ids.length) die('no exportable nodes found under that node');
+  const j = await api(`/v1/images/${t.key}?ids=${ids.map(i => i[0]).join(',')}&format=${fmt}`, { cache: false });
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [id, name] of ids) {
+    if (!j.images[id]) continue;
+    const p = path.join(dir, `${name.replace(/[^a-z0-9._-]+/gi, '-').toLowerCase()}.${fmt}`);
+    fs.writeFileSync(p, Buffer.from(await (await fetch(j.images[id])).arrayBuffer()));
+    console.log(path.resolve(p));
+  }
+}
+
+async function cmdStyles(args) {
+  const j = await api(`/v1/files/${target(args[0]).key}/styles`);
+  for (const s of j.meta.styles) console.log(`${s.style_type}\t${s.name}\t${s.node_id}`);
+}
+
+async function cmdComponents(args) {
+  const j = await api(`/v1/files/${target(args[0]).key}/components`);
+  for (const c of j.meta.components) console.log(`${c.name}\t${c.node_id}\t${(c.description || '').slice(0, 60)}`);
+}
+
+async function cmdVars(args) {
+  const t = target(args[0]);
+  if (!TOKEN) die('FIGMA_TOKEN is not set');
+  const res = await fetch(`${API}/v1/files/${t.key}/variables/local`, { headers: { 'X-Figma-Token': TOKEN } });
+  if (res.status === 403 || res.status === 404) {
+    console.error('figma: variables REST endpoint is Enterprise-only on your plan.');
+    console.error('       Falling back to the Figma MCP server via Codex (slower, uses model tokens).');
+    return viaCodex(`Call get_variable_defs on ${args[0]}. Output only a JSON object of variable name to value. No commentary.`);
+  }
+  if (!res.ok) die(`${res.status} ${res.statusText}`);
+  const j = await res.json();
+  const out = {};
+  for (const v of Object.values(j.meta.variables)) {
+    const multi = Object.keys(v.valuesByMode).length > 1;
+    for (const [mode, val] of Object.entries(v.valuesByMode)) {
+      out[`${v.name}${multi ? `@${mode}` : ''}`] =
+        v.resolvedType === 'COLOR' && val && val.r !== undefined ? hex(val) : val;
+    }
+  }
+  console.log(JSON.stringify(out, null, 2));
+}
+
+function viaCodex(prompt) {
+  try {
+    process.stdout.write(execFileSync('codex',
+      ['exec', '--sandbox', 'read-only', '--skip-git-repo-check', '--ephemeral', prompt],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }));
+  } catch { die('codex exec failed — run `codex mcp login figma` and check `codex mcp list`'); }
+}
+
+async function cmdRaw(args) {
+  const t = target(args[0]);
+  console.log(JSON.stringify((await nodes(t, Number(flag(args, '--depth', 0)) || undefined)).document, null, 2));
+}
+
+function usage() {
+  console.log(`figma <command> <figma-url> [options]      # deterministic reads, no LLM
+
+  spec   <url> [--depth N]        layout, typography, colors, style names   (default depth 4)
+  tree   <url>                    structure only, depth 2
+  png    <url> [--scale N] [-o f] render a node to an image file
+  assets <url> <dir> [--format]   export icons/vectors under a node
+  styles <url>                    published text/color/effect style names
+  comps  <url>                    published component names and ids
+  vars   <url>                    design variables (REST if Enterprise, else Codex fallback)
+  ctx    <url> [framework]        Figma's own design->code, via Codex (slow, costs tokens)
+  raw    <url> [--depth N]        raw node JSON
+
+Cached ${TTL / 60000} min. FIGMA_NO_CACHE=1 to refresh.`);
+}
+
+(async () => {
+  const [cmd, ...args] = process.argv.slice(2);
+  switch (cmd) {
+    case 'spec':   return cmdSpec(args, Number(flag(args, '--depth', 4)));
+    case 'tree':   return cmdSpec(args, 2);
+    case 'png':    return cmdPng(args);
+    case 'assets': return cmdAssets(args);
+    case 'styles': return cmdStyles(args);
+    case 'comps':  return cmdComponents(args);
+    case 'vars':   return cmdVars(args);
+    case 'raw':    return cmdRaw(args);
+    case 'ctx':    return viaCodex(`Call get_design_context on ${args[0]}. Framework: ${args[1] || 'match this repository'}. Output only code and the tokens it uses.`);
+    default:       return usage();
+  }
+})().catch(e => die(e.message));
