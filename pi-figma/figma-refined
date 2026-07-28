@@ -1,0 +1,13 @@
+function viaCodex(prompt) {
+  const args = ['exec',
+    '--profile', process.env.FIGMA_CODEX_PROFILE || 'figma',
+    '-c', 'mcp_servers.figma.enabled=true',
+    '--sandbox', 'read-only', '--skip-git-repo-check', '--ephemeral',
+    prompt];
+  if (process.env.FIGMA_DEBUG) console.error('+ codex ' + args.slice(0, -1).join(' '));
+  try {
+    process.stdout.write(execFileSync('codex', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }));
+  } catch {
+    die('codex exec failed — check: codex -p figma -c mcp_servers.figma.enabled=true  then /mcp');
+  }
+}
