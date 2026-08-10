@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tmux for coding agents — a field manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#12151b; --ink2:#4e555c; --ink3:#787f85;
+  --paper:#e4e6e0; --paper2:#eff1ea; --paper3:#d7dad2;
+  --pane:#14181f; --pane2:#1d2330; --paneink:#d6dbd3; --panedim:#7f8c87;
+  --rule:#c2c7be; --rule2:#aeb4a9;
+  --working:#5b4bd6; --wait:#b07a10; --done:#1c7a62; --stop:#a53a2a;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  --disp:"Bricolage Grotesque","IBM Plex Sans Condensed",var(--sans);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16.5px;line-height:1.62;
+  -webkit-font-smoothing:antialiased;padding-bottom:52px;
+}
+.wrap{max-width:900px;margin:0 auto;padding:0 20px}
+a{color:var(--working);text-decoration:none;border-bottom:1px solid rgba(91,75,214,.3)}
+a:hover{border-bottom-color:var(--working)}
+:focus-visible{outline:2px solid var(--working);outline-offset:3px}
+
+/* ---------- masthead ---------- */
+.mast{padding:56px 0 18px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3)}
+h1{
+  font-family:var(--disp);font-weight:800;font-size:clamp(34px,7.4vw,62px);
+  line-height:.98;letter-spacing:-.028em;margin:16px 0 0;
+}
+h1 em{font-style:normal;color:var(--working)}
+.deck{font-size:clamp(17px,2.4vw,20px);color:var(--ink2);max-width:60ch;margin:20px 0 0;line-height:1.5}
+.meta{font-family:var(--mono);font-size:12px;color:var(--ink3);margin-top:26px;padding-top:14px;border-top:1px solid var(--rule);display:flex;flex-wrap:wrap;gap:6px 22px}
+
+/* ---------- thesis panel ---------- */
+.thesis{background:var(--pane);color:var(--paneink);border-radius:2px;margin:34px 0 8px;overflow:hidden}
+.thesis .bar{background:var(--pane2);font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--panedim);padding:7px 14px;display:flex;justify-content:space-between}
+.thesis .bar b{color:var(--working);font-weight:500}
+.thesis .body{padding:20px 22px 24px;font-size:16px;line-height:1.62}
+.thesis .body p{margin:0 0 12px}
+.thesis .body p:last-child{margin-bottom:0}
+.thesis strong{color:#fff;font-weight:600}
+
+/* ---------- window sections ---------- */
+.window{margin:54px 0 0;border-left:1px solid var(--rule);padding-left:18px;position:relative}
+.window::after{content:"└";position:absolute;left:-1px;bottom:-22px;font-family:var(--mono);color:var(--rule2);font-size:15px;line-height:1}
+.winhead{display:flex;align-items:baseline;gap:9px;margin:0 0 6px -18px;font-family:var(--disp);font-weight:700}
+.winhead .cnr{font-family:var(--mono);color:var(--rule2);font-weight:400;font-size:15px}
+.winhead .num{font-family:var(--mono);font-size:12px;color:var(--working);font-weight:600;letter-spacing:.04em;padding-top:2px}
+.winhead .ttl{font-size:clamp(21px,3.4vw,29px);letter-spacing:-.02em;line-height:1.15}
+.winhead .fill{flex:1;border-top:1px solid var(--rule);min-width:14px;transform:translateY(-4px)}
+.lede{color:var(--ink2);font-size:17px;margin:2px 0 22px;max-width:62ch}
+h3{font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:-.01em;margin:32px 0 8px}
+h4{font-family:var(--mono);font-weight:600;font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin:26px 0 8px}
+p{margin:0 0 14px;max-width:68ch}
+ul,ol{max-width:68ch;padding-left:22px;margin:0 0 16px}
+li{margin:0 0 7px}
+li::marker{color:var(--ink3)}
+code{font-family:var(--mono);font-size:.86em;background:var(--paper3);padding:1px 5px;border-radius:2px;word-break:break-word}
+
+/* ---------- code panes ---------- */
+.pane{background:var(--pane);border-radius:2px;margin:18px 0 22px;overflow:hidden}
+.pane .ph{background:var(--pane2);color:var(--panedim);font-family:var(--mono);font-size:11.5px;padding:7px 13px;display:flex;justify-content:space-between;gap:12px}
+.pane .ph .tag{color:var(--wait)}
+.pane pre{margin:0;padding:15px 14px;overflow-x:auto;color:var(--paneink);font-family:var(--mono);font-size:12.6px;line-height:1.66;-webkit-overflow-scrolling:touch}
+.pane pre .c{color:var(--panedim)}
+.pane pre .k{color:#9d8ef0}
+.pane pre .s{color:#e0b45c}
+.pane pre .g{color:#5cc0a2}
+.pane code{background:none;padding:0;font-size:inherit}
+
+/* ---------- diagrams ---------- */
+.diagram{margin:20px 0 24px}
+.diagram pre{margin:0;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.5;color:var(--ink);background:var(--paper2);border:1px solid var(--rule);border-radius:2px;padding:16px 14px;-webkit-overflow-scrolling:touch}
+.cap{font-family:var(--mono);font-size:11.5px;color:var(--ink3);margin-top:7px;line-height:1.5;max-width:70ch}
+.cap b{color:var(--ink2);font-weight:500}
+
+/* ---------- charts ---------- */
+figure{margin:24px 0 26px}
+figure svg{width:100%;height:auto;display:block;background:var(--paper2);border:1px solid var(--rule);border-radius:2px}
+.sv-t{font-family:"IBM Plex Mono",monospace;fill:#12151b}
+.sv-d{font-family:"IBM Plex Mono",monospace;fill:#787f85}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;margin:18px 0 24px;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:14.2px}
+th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);font-weight:600;padding:0 14px 7px 0;border-bottom:1px solid var(--rule2);vertical-align:bottom}
+td{padding:10px 14px 10px 0;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.5}
+tr:last-child td{border-bottom:none}
+td code{font-size:12.4px;background:var(--paper3)}
+.tw table.narrow{min-width:380px}
+
+/* ---------- state chips ---------- */
+.chip{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.05em;padding:2px 7px;border-radius:2px;text-transform:uppercase;font-weight:500;white-space:nowrap}
+.c-work{background:rgba(91,75,214,.13);color:var(--working)}
+.c-wait{background:rgba(176,122,16,.16);color:var(--wait)}
+.c-done{background:rgba(28,122,98,.14);color:var(--done)}
+.c-stop{background:rgba(165,58,42,.13);color:var(--stop)}
+
+/* ---------- callouts ---------- */
+.note{border-left:2px solid var(--working);background:var(--paper2);padding:14px 16px;margin:20px 0;font-size:15px}
+.note.warn{border-left-color:var(--stop)}
+.note.warn .lbl{color:var(--stop)}
+.note .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--working);display:block;margin-bottom:5px;font-weight:600}
+.note p{margin:0 0 9px;max-width:none}
+.note p:last-child{margin:0}
+
+/* ---------- key/value strip ---------- */
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:22px 0}
+.kv div{background:var(--paper2);padding:13px 14px}
+.kv .n{font-family:var(--disp);font-weight:800;font-size:26px;line-height:1;letter-spacing:-.02em}
+.kv .l{font-family:var(--mono);font-size:10.8px;color:var(--ink3);margin-top:7px;line-height:1.4;letter-spacing:.03em}
+
+/* ---------- status line (signature) ---------- */
+.statusline{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:var(--pane);color:var(--panedim);
+  font-family:var(--mono);font-size:11.5px;
+  display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;
+  border-top:1px solid #000;
+}
+.sl-left{color:var(--done);font-weight:500;flex:none}
+.sl-wins{flex:1;display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;white-space:nowrap;scroll-behavior:smooth}
+.sl-wins::-webkit-scrollbar{display:none}
+.sl-wins a{color:var(--panedim);border:none;padding:2px 4px;border-radius:1px;flex:none}
+.sl-wins a.on{background:var(--working);color:#fff}
+.sl-right{flex:none;color:var(--panedim)}
+.sl-right b{color:var(--wait);font-weight:500}
+@media (max-width:680px){
+  .sl-wins a{display:none}
+  .sl-wins a.on{display:inline-block}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .sl-wins{scroll-behavior:auto}
+}
+
+/* ---------- misc ---------- */
+hr.sp{border:none;border-top:1px solid var(--rule);margin:40px 0}
+.srcs{font-size:14px;columns:2;column-gap:34px}
+.srcs li{break-inside:avoid;margin-bottom:9px}
+@media (max-width:700px){.srcs{columns:1}}
+.foot{margin:60px 0 40px;padding-top:18px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11.5px;color:var(--ink3);line-height:1.7}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow">Field manual · researched August 2026</div>
+  <h1>tmux is the runtime<br>your <em>coding agents</em><br>already run on.</h1>
+  <p class="deck">A working guide to driving opencode, Pi, Claude Code and friends from a terminal multiplexer — configuration, topology, parallelism, observability, and the scripting surface that lets an agent drive tmux back.</p>
+  <div class="meta">
+    <span>tmux 3.7b</span><span>opencode · pi · claude code · codex</span><span>~70 sources</span><span>read time ≈ 35 min</span>
+  </div>
+</header>
+
+<div class="thesis">
+  <div class="bar"><span>0:brief</span><span><b>thesis</b></span></div>
+  <div class="body">
+    <p>A terminal multiplexer written in 2007 for sysadmins turned out to have exactly the four properties agent orchestration needs in 2026: <strong>per-pane PTY isolation</strong>, <strong>server-side session persistence</strong>, <strong>real-time visibility into many processes at once</strong>, and <strong>a stable textual API</strong> (<code style="background:#252b36;color:#e0b45c">send-keys</code>, <code style="background:#252b36;color:#e0b45c">capture-pane</code>, <code style="background:#252b36;color:#e0b45c">pipe-pane</code>).</p>
+    <p>Nobody designed it for this. That is why it works: every agent CLI is just a foreground process in a pty, and tmux is the most boring, most scriptable, most already-installed way to own a pty.</p>
+    <p>The productivity gains are not in tmux itself. They come from three things it enables: <strong>isolation</strong> (agents that cannot corrupt each other's working tree), <strong>attention routing</strong> (you find out an agent is blocked in seconds, not in 40 minutes), and <strong>addressability</strong> (a stable name like <code style="background:#252b36;color:#e0b45c">main:3.1</code> that both you and the agent can talk about). This manual is organised around those three.</p>
+  </div>
+</div>
+
+<!-- ============ 01 ============ -->
+<section class="window" id="s01" data-name="why">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">01</span><span class="ttl">Why this old tool won the job</span><span class="fill"></span></h2>
+  <p class="lede">Four properties, all present since the first commits. Understanding them tells you which problems tmux solves and which it absolutely does not.</p>
+
+  <div class="kv">
+    <div><div class="n">≈47k</div><div class="l">tmux GitHub stars<br>at the 3.7b release</div></div>
+    <div><div class="n">3.7b</div><div class="l">current stable<br>1 Jul 2026</div></div>
+    <div><div class="n">3–5</div><div class="l">teammates Anthropic<br>recommends per team</div></div>
+    <div><div class="n">ISC</div><div class="l">licence · no telemetry<br>no account, no tier</div></div>
+  </div>
+
+  <h3>The client–server split is the whole trick</h3>
+  <p>Running <code>tmux</code> does not start a terminal. It starts a <em>server</em> that owns your sessions, and connects your terminal to it as a client over a Unix socket. Close the laptop, drop the VPN, get on a plane — the client dies, the server does not. Every agent mid-refactor keeps going.</p>
+
+  <div class="diagram">
+<pre>  your laptop            the box (local or VPS)
+  ───────────            ──────────────────────────────────
+  ┌───────────┐   unix   ┌──────────────────────────────┐
+  │ terminal  │◄─socket─►│  tmux server (detached-safe) │
+  │  client A │          │                              │
+  └───────────┘          │  session "api"               │
+                         │   ├── window 1 ── pane %0 ───┼──► pty ─► opencode
+  ┌───────────┐          │   │             └ pane %1 ───┼──► pty ─► npm run dev
+  │  phone    │◄─ssh────►│   └── window 2 ── pane %2 ───┼──► pty ─► pi
+  │  client B │          │                              │
+  └───────────┘          │  session "infra"  ...        │
+                         └──────────────────────────────┘
+  clients are views.       processes live here and outlive every view.</pre>
+    <div class="cap"><b>Fig 1.</b> Each pane owns a distinct kernel pty, so two agents writing at once never interleave into one buffer, and <code>Ctrl-C</code> to one pane cannot touch another.</div>
+  </div>
+
+  <h3>Four properties, four consequences</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:22%">Property</th><th style="width:38%">What it actually gives you</th><th>The agent-era consequence</th></tr></thead>
+    <tbody>
+      <tr><td><b>PTY isolation</b></td><td>Separate stdin/stdout/stderr and file descriptors per pane</td><td>Read one agent's screen without signalling the others; kill a wedged agent without restarting the workspace</td></tr>
+      <tr><td><b>Server-side persistence</b></td><td>Sessions outlive every client connection</td><td>A 40-minute agent run survives a dropped SSH link, a closed lid, a train tunnel</td></tr>
+      <tr><td><b>Simultaneous visibility</b></td><td>N live processes on one screen, no log aggregation layer</td><td>You watch agents work instead of reading their post-mortem logs</td></tr>
+      <tr><td><b>Textual CLI API</b></td><td><code>send-keys</code>, <code>capture-pane</code>, <code>pipe-pane</code>, <code>wait-for</code>, formats</td><td>Anything — a shell script, a Makefile, or another agent — can drive the workspace</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>The release cadence tells the story</h3>
+  <p>tmux went 14 months between 3.5 and 3.6, then shipped 3.7 seven months later. Several of the recent additions land squarely on agent workflows: extended-keys handling that lets TUIs distinguish <code>Shift+Enter</code>, passthrough for escape sequences that carry notifications, and in 3.7 a floating-pane primitive and OSC 9;4 progress forwarding.</p>
+
+  <figure>
+  <svg viewBox="0 0 820 190" role="img" aria-label="Timeline of tmux releases from 3.4 in February 2024 to 3.7b in July 2026 with agent-relevant features">
+    <line x1="58" y1="118" x2="782" y2="118" stroke="#aeb4a9" stroke-width="1"/>
+    <!-- ticks -->
+    <g stroke="#12151b" stroke-width="1.5">
+      <line x1="60" y1="112" x2="60" y2="124"/>
+      <line x1="229" y1="112" x2="229" y2="124"/>
+      <line x1="567" y1="112" x2="567" y2="124"/>
+      <line x1="736" y1="112" x2="736" y2="124"/>
+    </g>
+    <g stroke="#aeb4a9" stroke-width="1">
+      <line x1="591" y1="114" x2="591" y2="122"/>
+      <line x1="712" y1="114" x2="712" y2="122"/>
+      <line x1="760" y1="114" x2="760" y2="122"/>
+    </g>
+    <!-- labels below -->
+    <g class="sv-t" font-size="13" font-weight="600" text-anchor="middle">
+      <text x="60" y="142">3.4</text><text x="229" y="142">3.5</text>
+      <text x="567" y="142">3.6</text><text x="736" y="142">3.7</text>
+    </g>
+    <g class="sv-d" font-size="10.5" text-anchor="middle">
+      <text x="60" y="158">Feb 2024</text><text x="229" y="158">Sep 2024</text>
+      <text x="567" y="158">Nov 2025</text><text x="740" y="158">Jun 2026</text>
+      <text x="760" y="176">3.7b · Jul 2026</text>
+    </g>
+    <!-- callouts above -->
+    <g stroke="#5b4bd6" stroke-width="1">
+      <line x1="60" y1="112" x2="60" y2="86"/><line x1="60" y1="86" x2="150" y2="86"/>
+      <line x1="229" y1="112" x2="229" y2="58"/><line x1="229" y1="58" x2="320" y2="58"/>
+      <line x1="567" y1="112" x2="567" y2="86"/><line x1="567" y1="86" x2="640" y2="86"/>
+      <line x1="736" y1="112" x2="736" y2="34"/><line x1="736" y1="34" x2="640" y2="34"/>
+    </g>
+    <g class="sv-t" font-size="10.8">
+      <text x="64" y="82">allow-passthrough all · capture-pane -T · OSC 133</text>
+      <text x="233" y="54">extended-keys overhaul + extended-keys-format (csi-u)</text>
+      <text x="571" y="82">pane-scrollbars · tiled-layout-max-columns</text>
+      <text x="380" y="30" text-anchor="start">floating panes (new-pane) · OSC 9;4 progress · get-clipboard</text>
+    </g>
+    <text class="sv-d" x="60" y="22" font-size="10.5">gap: 14 months</text>
+    <line x1="145" y1="18" x2="222" y2="18" stroke="#aeb4a9" stroke-width="1" stroke-dasharray="2 3"/>
+  </svg>
+  <div class="cap"><b>Fig 2.</b> tmux release timeline with the changes that matter to terminal agents. Note that <code>extended-keys-format csi-u</code> — required by Pi and useful to every TUI agent — needs 3.5 or later.</div>
+  </figure>
+
+  <div class="note warn">
+    <span class="lbl">What tmux does not give you</span>
+    <p>It is <strong>not a sandbox</strong>. PTY isolation is process-level plumbing, not a security boundary: panes share your filesystem, your network namespace, your credentials, your SSH agent. An agent that runs <code>rm -rf</code> in a pane deletes your real files. Section 10 covers what to layer underneath.</p>
+    <p>It is also <strong>not an event system</strong>. tmux emits text on a screen, not JSON on a bus. Every orchestrator built on top pays a screen-scraping tax, and every one of them has re-paid it. Prefer real hooks from the agent (Section 05) over pattern-matching pane output whenever the agent offers them.</p>
+  </div>
+</section>
+
+<!-- ============ 02 ============ -->
+<section class="window" id="s02" data-name="config">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">02</span><span class="ttl">The config that actually matters</span><span class="fill"></span></h2>
+  <p class="lede">Most tmux configs on the internet are about colours. These eleven settings are about whether your agent receives the keys you press and whether its notifications reach your desktop.</p>
+
+  <h3>The agent-critical settings</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:34%">Setting</th><th>Why an agent needs it</th><th style="width:16%">Breaks without it</th></tr></thead>
+    <tbody>
+      <tr><td><code>set -s escape-time 0</code><br><span style="color:var(--ink3);font-size:13px">(3.5+ default is 10ms)</span></td><td>tmux waits after <kbd>Esc</kbd> to see if an escape sequence follows. That delay is why pressing Escape to interrupt an agent appears to do nothing.</td><td>Interrupting a run; Neovim in an adjacent pane</td></tr>
+      <tr><td><code>set -g allow-passthrough on</code></td><td>Lets a program inside a pane emit escape sequences straight to the outer terminal — desktop notifications, progress, clipboard, images.</td><td>Agent notifications, OSC clipboard</td></tr>
+      <tr><td><code>set -s extended-keys on</code><br><code>set -g extended-keys-format csi-u</code></td><td>Without it, <kbd>Shift+Enter</kbd> and <kbd>Ctrl+Enter</kbd> collapse into a plain <code>\r</code>. Your "insert newline" becomes "submit prompt".</td><td>Multiline prompts in Pi, Claude Code, opencode</td></tr>
+      <tr><td><code>set -as terminal-features<br>'xterm*:extkeys'</code></td><td>Advertises extended-key capability to the program so it actually requests the mode.</td><td>Modified-Enter handling</td></tr>
+      <tr><td><code>set -g set-clipboard on</code></td><td>Routes OSC 52 copy requests to the system clipboard, including over SSH and WSL.</td><td>Copying agent output anywhere useful</td></tr>
+      <tr><td><code>set -g history-limit 100000</code></td><td>Agent runs are long. The 2000-line default truncates the reasoning you want to review.</td><td>Post-hoc review, <code>capture-pane -S</code></td></tr>
+      <tr><td><code>set -g detach-on-destroy off</code></td><td>When a teammate pane or worktree window closes, you switch to another session instead of being dumped out of tmux entirely.</td><td>Multi-agent sessions closing under you</td></tr>
+      <tr><td><code>set -g renumber-windows on</code></td><td>Worktree windows come and go constantly. Without this you get gaps and stale mental indices.</td><td>Stable <code>session:window</code> addressing</td></tr>
+      <tr><td><code>set -g focus-events on</code></td><td>Lets indicators clear state when you actually look at a pane, instead of flashing and vanishing.</td><td>"Deferred reset" notification UX</td></tr>
+      <tr><td><code>set -g base-index 1</code><br><code>setw -g pane-base-index 1</code></td><td>Human-friendly indices you can say out loud and put in <code>AGENTS.md</code>.</td><td>Nothing — but adopt it before you build habits</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="pane">
+    <div class="ph"><span>~/.tmux.conf</span><span class="tag">agent baseline</span></div>
+<pre><span class="c"># ── keys reach the agent ─────────────────────────────────────</span>
+<span class="k">set</span> -s escape-time 0
+<span class="k">set</span> -s extended-keys on
+<span class="k">set</span> -g extended-keys-format csi-u        <span class="c"># tmux 3.5+; Pi's recommended mode</span>
+<span class="k">set</span> -as terminal-features <span class="s">'xterm*:extkeys'</span>
+<span class="k">set</span> -g allow-passthrough on               <span class="c"># notifications, OSC 52, images</span>
+<span class="k">set</span> -g set-clipboard on
+
+<span class="c"># ── survive long agent runs ──────────────────────────────────</span>
+<span class="k">set</span> -g history-limit 100000
+<span class="k">set</span> -g detach-on-destroy off
+<span class="k">set</span> -g renumber-windows on
+<span class="k">set</span> -g base-index 1
+<span class="k">setw</span> -g pane-base-index 1
+<span class="k">set</span> -g focus-events on
+<span class="k">setw</span> -g mode-keys vi
+
+<span class="c"># ── colour fidelity for TUI agents ───────────────────────────</span>
+<span class="k">set</span> -g default-terminal <span class="s">"tmux-256color"</span>
+<span class="k">set</span> -sa terminal-overrides <span class="s">',xterm-256color:RGB'</span>
+
+<span class="c"># ── splits that inherit cwd (worktrees depend on this) ───────</span>
+<span class="k">bind</span> v split-window -h -c <span class="s">"#{pane_current_path}"</span>
+<span class="k">bind</span> s split-window -v -c <span class="s">"#{pane_current_path}"</span>
+<span class="k">bind</span> c new-window       -c <span class="s">"#{pane_current_path}"</span>
+
+<span class="c"># ── pass a hijacked Ctrl key through to the agent ────────────</span>
+<span class="c">#   prefix then o  ==  Ctrl-O inside Claude Code / Droid</span>
+<span class="k">bind</span> o send-keys C-o
+
+<span class="c"># ── which pane is live (subtle, not a light show) ────────────</span>
+<span class="k">setw</span> -g window-style        <span class="s">'bg=#101010'</span>
+<span class="k">setw</span> -g window-active-style <span class="s">'bg=#151515'</span>
+<span class="k">set</span> -g pane-active-border-style fg=colour113
+
+<span class="k">bind</span> r source-file ~/.tmux.conf \; display <span class="s">"reloaded"</span></pre>
+  </div>
+
+  <div class="note">
+    <span class="lbl">Restart, don't reload, after upgrading</span>
+    <p>tmux is a server. A new binary does not take effect in running sessions — <code>tmux kill-server</code> and start fresh. The 3.6 and 3.7 release notes both call this out; skipping it produces confusing "not a terminal" errors on attach.</p>
+  </div>
+
+  <h3>Keybinding collisions: the map nobody draws</h3>
+  <p>Every TUI agent claims Ctrl-chords, and so does tmux. The failure mode is silent — you press the key, tmux eats it, the agent never hears it, and you conclude the agent is broken.</p>
+
+  <div class="diagram">
+<pre>  keystroke ──► terminal emulator ──► tmux ──► agent TUI
+                       │                │            │
+        Cmd/Super combos│      prefix +  │  leader +  │
+        must be         │      bindings  │  chords    │
+        translated here │      eaten here│            │
+                        ▼                ▼            ▼
+                   Alacritty/       C-b (default)  opencode: C-x
+                   Ghostty/         C-a, C-f, C-w  claude:   C-o, C-t
+                   WezTerm cfg      (your choice)  pi:       C-l, C-j</pre>
+    <div class="cap"><b>Fig 3.</b> Three layers compete for the same chords. Pick a tmux prefix none of your agents use (<code>C-f</code> and <code>C-w</code> are popular precisely because agents rarely bind them), and add explicit <code>send-keys</code> passthroughs for the two or three agent chords you actually need.</div>
+  </div>
+
+  <h4>Per-agent notes</h4>
+  <ul>
+    <li><b>Pi</b> documents <code>extended-keys on</code> + <code>extended-keys-format csi-u</code> as the recommended setup, and binds <code>Ctrl+J</code> as a newline alias so Shift+Enter still works through terminal remaps. It requires tmux 3.5+ for the csi-u format; on 3.2–3.4 omit the format line and Pi falls back to xterm <code>modifyOtherKeys</code>.</li>
+    <li><b>Claude Code</b> wants <code>allow-passthrough</code>, <code>extended-keys</code> and the <code>extkeys</code> terminal feature. If you use its fullscreen renderer, avoid iTerm2's <code>tmux -CC</code> control mode — it breaks the alternate screen buffer and mouse tracking. Plain tmux inside iTerm2 is fine.</li>
+    <li><b>opencode</b> uses <code>Ctrl+X</code> as its leader, which avoids most tmux prefixes out of the box. Its common tmux complaints are Escape latency (<code>escape-time</code>) and clipboard on WSL2 (<code>set-clipboard on</code> plus <code>allow-passthrough on</code>).</li>
+    <li><b>Mouse mode</b> is genuinely contested. Turn it on if you use a fullscreen agent renderer and want wheel scrolling inside it; turn it off if you prefer native terminal text selection. There is no universally right answer, only a decision you should make once.</li>
+  </ul>
+</section>
+
+<!-- ============ 03 ============ -->
+<section class="window" id="s03" data-name="topology">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">03</span><span class="ttl">Topology: mapping work onto panes</span><span class="fill"></span></h2>
+  <p class="lede">Sessions, windows and panes are cheap. The scarce resource is your attention. Choose the shape that puts exactly one decision in front of you at a time.</p>
+
+  <p>Three topologies dominate real setups. They are not mutually exclusive — most people run A as the frame, B inside a window when they are actively supervising, and C when they fan out.</p>
+
+  <h4>A · Session per project, window per task</h4>
+  <div class="diagram">
+<pre> tmux session "checkout"        (one per project / client / repo)
+ ┌──────────────────────────────────────────────────────┐
+ │  1:shell   2:fix-auth*   3:flaky-test   4:dev-server │
+ └──────────────────────────────────────────────────────┘
+   each window is one unit of work, full screen, its own
+   editor state, its own agent process, its own history</pre>
+    <div class="cap"><b>Fig 4a.</b> The dominant pattern among long-time tmux users. One window per task means the window list <em>is</em> your agent dashboard — especially once window names are auto-derived from what the agent is doing rather than all reading "claude".</div>
+  </div>
+
+  <h4>B · Supervisor layout inside one window</h4>
+  <div class="diagram">
+<pre> window "supervise"                     layout: main-vertical
+ ┌──────────────────────────┬───────────────────────────┐
+ │                          │  %1   nvim .              │
+ │  %0   opencode           ├───────────────────────────┤
+ │       main-pane ≈ 60%    │  %2   tail -f dev.log     │
+ │                          │                           │
+ └──────────────────────────┴───────────────────────────┘
+   agent on the left, your edits top-right, the thing it
+   keeps breaking bottom-right — all visible, all at once</pre>
+    <div class="cap"><b>Fig 4b.</b> Use this when you are actively pairing. <code>prefix z</code> zooms any pane to full screen and back, which makes a three-pane layout usable on a laptop.</div>
+  </div>
+
+  <h4>C · Worktree per window (the fan-out)</h4>
+  <div class="diagram">
+<pre> filesystem                        tmux session "repo"
+ repo/                             ┌──────────────────────┐
+ ├── main/            ───────────► │ 1:main               │
+ ├── .worktrees/fix-auth  ───────► │ 2:fix-auth   ●working│
+ ├── .worktrees/add-cache ───────► │ 3:add-cache  ◐waiting│
+ └── .worktrees/pr-142    ───────► │ 4:pr-142     ✓done   │
+                                   └──────────────────────┘
+ one branch = one directory = one window = one agent = one diff</pre>
+    <div class="cap"><b>Fig 4c.</b> The identity chain that makes parallel agents tractable. Break any link — two agents in one directory, two branches in one window — and you are back to merge chaos. Section 04 covers this in full.</div>
+  </div>
+
+  <h3>Addressing: the convention that pays for itself</h3>
+  <p>tmux targets are stable strings: <code>session:window.pane</code>. Once you commit to one session for most work, <code>main:3.1</code> unambiguously means window 3, pane 1. That string is useful to you — and it is <em>far</em> more useful to the agent.</p>
+
+  <p>Write the convention into <code>AGENTS.md</code> / <code>CLAUDE.md</code> and the agent can act on it directly: read the backend log in another pane, re-run a command from a pane's history, check whether the dev server recovered. This is the cheapest capability upgrade available, and it costs one paragraph of prose.</p>
+
+  <div class="pane">
+    <div class="ph"><span>AGENTS.md</span><span class="tag">excerpt</span></div>
+<pre><span class="c">## Terminal layout</span>
+
+I work in a single tmux session named <span class="s">`main`</span>. Panes are addressed as
+<span class="s">`main:&lt;window&gt;.&lt;pane&gt;`</span>. When I say "tmux 3.1" I mean <span class="s">`main:3.1`</span>.
+
+- <span class="s">`main:2.0`</span> — API server, live reload, always running
+- <span class="s">`main:2.1`</span> — worker queue
+- <span class="s">`main:5.0`</span> — psql attached to the dev database
+
+You may read any pane with <span class="s">`tmux capture-pane -p -t main:2.0 -S -200`</span>.
+You may send commands with <span class="s">`tmux send-keys -t main:5.0 ... Enter`</span>.
+Do NOT send keys to a pane that is running another coding agent.
+Do NOT run <span class="s">`kill-session`</span> or <span class="s">`kill-server`</span>.
+
+For a command that takes longer than ~30s, run it in <span class="s">`main:2.1`</span> and
+signal completion with <span class="s">`tmux wait-for -S build-done`</span> rather than
+blocking your own turn.</pre>
+  </div>
+
+  <h3>How many agents, actually?</h3>
+  <p>The honest answer from practitioners and from Anthropic's own guidance converge: three to five. Token cost scales linearly with the number of independent contexts, while useful throughput saturates because coordination overhead, file conflicts and your review bandwidth all grow. Anthropic's documented rule of thumb is 3–5 teammates with roughly 5–6 tasks each, and never two agents editing the same file.</p>
+
+  <figure>
+  <svg viewBox="0 0 820 260" role="img" aria-label="Schematic showing token cost rising linearly with agent count while useful throughput saturates around three to five agents">
+    <rect x="228" y="34" width="152" height="176" fill="#5b4bd6" opacity="0.07"/>
+    <text class="sv-d" x="304" y="28" font-size="11" text-anchor="middle">practical sweet spot</text>
+    <line x1="62" y1="210" x2="782" y2="210" stroke="#12151b" stroke-width="1.2"/>
+    <line x1="62" y1="34" x2="62" y2="210" stroke="#12151b" stroke-width="1.2"/>
+    <!-- linear token cost -->
+    <line x1="62" y1="210" x2="770" y2="46" stroke="#b07a10" stroke-width="2"/>
+    <!-- saturating throughput -->
+    <path d="M62,210 C150,150 220,116 304,104 C420,90 600,84 770,82" fill="none" stroke="#1c7a62" stroke-width="2.4"/>
+    <!-- markers -->
+    <g fill="#12151b" class="sv-d" font-size="11" text-anchor="middle">
+      <text x="62" y="230">1</text><text x="152" y="230">2</text><text x="228" y="230">3</text>
+      <text x="304" y="230">4</text><text x="380" y="230">5</text><text x="533" y="230">7</text><text x="770" y="230">10+</text>
+      <text x="416" y="250" font-size="11">concurrent agents on one codebase</text>
+    </g>
+    <g class="sv-t" font-size="12" font-weight="600">
+      <text x="600" y="72" fill="#1c7a62">useful throughput</text>
+      <text x="600" y="40" fill="#b07a10">token &amp; attention cost</text>
+    </g>
+    <text class="sv-d" x="52" y="122" font-size="10.5" text-anchor="middle" transform="rotate(-90 52 122)">relative magnitude</text>
+    <text class="sv-d" x="396" y="176" font-size="10.5" text-anchor="middle">gap = money spent on coordination, not code</text>
+  </svg>
+  <div class="cap"><b>Fig 5.</b> Shape of the documented tradeoff, not measured data. Cost is linear because each agent carries its own context window; throughput bends because tasks stop being genuinely independent. The gap between the curves is what you pay for over-parallelising.</div>
+  </figure>
+
+  <div class="note">
+    <span class="lbl">Rule of thumb</span>
+    <p>Add an agent only when you can name the file set it owns and nobody else touches. If you cannot draw that boundary, you do not have a parallel task — you have a sequential one you are hoping to shortcut.</p>
+  </div>
+</section>
+
+<!-- ============ 04 ============ -->
+<section class="window" id="s04" data-name="parallel">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">04</span><span class="ttl">Parallel agents and git worktrees</span><span class="fill"></span></h2>
+  <p class="lede">Agents sharing a working tree do not collaborate. They corrupt each other: half-written files become type errors in someone else's build, and every diff mixes three unrelated changes.</p>
+
+  <p>The fix is not clever coordination between agents. It is hard isolation at the filesystem level so no coordination is needed. <code>git worktree</code> gives each agent its own checked-out directory backed by the same <code>.git</code>, and tmux gives each directory a window. The pairing is the whole workflow.</p>
+
+  <div class="pane">
+    <div class="ph"><span>the manual version</span><span class="tag">~8 lines, no tooling</span></div>
+<pre><span class="c"># create an isolated workspace for one task</span>
+<span class="g">git</span> worktree add .worktrees/fix-auth -b fix-auth
+<span class="g">cp</span> .env .worktrees/fix-auth/.env            <span class="c"># copy, don't symlink</span>
+<span class="g">ln</span> -s "$PWD/.turbo" .worktrees/fix-auth/.turbo   <span class="c"># share caches</span>
+
+<span class="c"># give it a window and start the agent there</span>
+<span class="g">tmux</span> new-window -n fix-auth -c "$PWD/.worktrees/fix-auth"
+<span class="g">tmux</span> send-keys -t fix-auth <span class="s">'opencode'</span> Enter
+
+<span class="c"># ... later, when the diff looks good</span>
+<span class="g">git</span> merge fix-auth && <span class="g">git</span> worktree remove .worktrees/fix-auth
+<span class="g">tmux</span> kill-window -t fix-auth && <span class="g">git</span> branch -d fix-auth</pre>
+  </div>
+
+  <h3>The lifecycle, and where it leaks</h3>
+  <div class="diagram">
+<pre>  add ──► worktree + topic branch ──► tmux window + panes ──► agent
+                                                               │
+                              ┌────────────────────────────────┘
+                              ▼
+                      you review the diff
+                              │
+             ┌────────────────┴────────────────┐
+             ▼                                 ▼
+          MERGE                             DISCARD
+   branch → main                     drop the branch
+   git worktree remove               git worktree remove
+   tmux kill-window                  tmux kill-window
+             │                                 │
+             └──────────► clean state ◄────────┘
+
+  LEAKS (all of them cost you a confusing afternoon later):
+   ✗ window closed, worktree left behind      → stale dirs pile up
+   ✗ worktree removed, window left behind     → dead shell in a gone dir
+   ✗ branch merged, worktree still checked out→ git refuses operations
+   ✗ .env symlinked instead of copied         → one agent edits it for all</pre>
+    <div class="cap"><b>Fig 6.</b> Every worktree tool exists to make teardown atomic. That is genuinely the hard part — creation is one command, cleanup is four, and skipping any one of them is silent until it isn't.</div>
+  </div>
+
+  <h3>What else needs isolating</h3>
+  <p>A worktree isolates files. It does not isolate the rest of your dev environment, and two agents both running <code>npm run dev</code> on port 3000 will fight.</p>
+  <div class="tw">
+  <table class="narrow">
+    <thead><tr><th style="width:22%">Resource</th><th>Approach</th></tr></thead>
+    <tbody>
+      <tr><td>Ports</td><td>Derive from worktree index or branch-name hash; put it in a per-worktree <code>.env.local</code></td></tr>
+      <tr><td>Databases</td><td>Branch the database, or one schema/container per worktree; never share a mutable dev DB across agents</td></tr>
+      <tr><td>Secrets / <code>.env</code></td><td><b>Copy</b>, never symlink — a symlink means one agent's edit rewrites everyone's config</td></tr>
+      <tr><td>Build caches</td><td><b>Symlink</b> (<code>.turbo</code>, <code>node_modules/.cache</code>, <code>target/</code> where safe) — this is what makes worktrees cheap</td></tr>
+      <tr><td>Dependencies</td><td>Run install once per worktree at creation, in a background pane, so the agent doesn't start on a broken tree</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Tooling landscape</h3>
+  <p>These all automate the same lifecycle. Pick on the axis of "does it fit my existing tmux setup" rather than feature count — the whole point is that you keep your terminal.</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:19%">Tool</th><th style="width:15%">Shape</th><th>What it adds over the eight manual lines</th></tr></thead>
+    <tbody>
+      <tr><td><b>workmux</b></td><td>Rust CLI, tmux windows</td><td><code>add</code> / <code>merge</code> as the whole API; declarative <code>.workmux.yaml</code> for per-worktree panes, symlinks and copies; agent status rendered into the tmux window list; <code>--pr</code> to check out a pull request; <code>--auto-name</code> to derive the branch from the prompt</td></tr>
+      <tr><td><b>dmux</b></td><td>Node CLI, tmux panes</td><td>Pane-per-agent rather than window-per-agent; AI-generated branch names and commit messages; supports a long list of agent CLIs including opencode, Claude Code, Codex, Pi and Cursor</td></tr>
+      <tr><td><b>pi-side-agents</b></td><td>Pi extension</td><td><code>/agent &lt;task&gt;</code> from inside a Pi session spawns a child Pi in its own window + worktree; the parent's status line shows which children are blocked; children merge back on "LGTM"; exposes <code>agent-start</code>, <code>agent-check</code>, <code>agent-wait-any</code>, <code>agent-send</code> so a parent agent can orchestrate</td></tr>
+      <tr><td><b>gwq</b></td><td>Worktree manager</td><td>Cross-repository worktree status dashboard with tmux integration for long-running agent processes</td></tr>
+      <tr><td>rolling your own</td><td>~60 lines of bash</td><td>Perfectly viable, and several well-known engineers have published exactly that. The value of a tool is atomic teardown and status reporting; if you do those two things, stop there.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note warn">
+    <span class="lbl">Worktrees are isolation, not security</span>
+    <p>A worktree stops agents from stepping on each other's files. It does nothing to stop an agent from writing outside the worktree, reading your SSH keys, or making network calls. Curated sandbox lists explicitly flag worktree+tmux tooling as useful <em>alongside</em> a real sandbox and not a boundary on its own. See Section 10.</p>
+  </div>
+</section>
+
+<!-- ============ 05 ============ -->
+<section class="window" id="s05" data-name="observe">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">05</span><span class="ttl">Observability: the idle-agent tax</span><span class="fill"></span></h2>
+  <p class="lede">The single largest source of wasted time in multi-agent work is not bad output. It is an agent that hit a permission prompt four minutes in and sat silent for the next eighty-six.</p>
+
+  <figure>
+  <svg viewBox="0 0 820 150" role="img" aria-label="A 90 minute agent session where only four minutes were productive and 86 minutes were spent silently blocked">
+    <defs>
+      <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+        <rect width="7" height="7" fill="#b07a10" opacity="0.12"/>
+        <line x1="0" y1="0" x2="0" y2="7" stroke="#b07a10" stroke-width="2" opacity="0.5"/>
+      </pattern>
+    </defs>
+    <text class="sv-d" x="40" y="34" font-size="11">you start a 90-minute task and walk away</text>
+    <rect x="40" y="48" width="34" height="42" fill="#5b4bd6"/>
+    <rect x="74" y="48" width="706" height="42" fill="url(#hatch)" stroke="#b07a10" stroke-width="1"/>
+    <text x="46" y="74" font-size="11.5" font-family="IBM Plex Mono, monospace" fill="#fff">4m</text>
+    <text x="392" y="74" font-size="12.5" font-family="IBM Plex Mono, monospace" fill="#8a6510" text-anchor="middle">86 minutes blocked on a prompt nobody saw</text>
+    <line x1="40" y1="98" x2="40" y2="112" stroke="#12151b"/>
+    <line x1="780" y1="98" x2="780" y2="112" stroke="#12151b"/>
+    <line x1="40" y1="112" x2="780" y2="112" stroke="#12151b" stroke-dasharray="2 3"/>
+    <text class="sv-d" x="40" y="130" font-size="11">t=0</text>
+    <text class="sv-d" x="780" y="130" font-size="11" text-anchor="end">t=90m · zero progress since t=4m</text>
+    <text class="sv-t" x="40" y="146" font-size="10.5" fill="#787f85">The work did not fail. It never happened, and nothing told you.</text>
+  </svg>
+  <div class="cap"><b>Fig 7.</b> The failure mode that agent-aware multiplexers were built to fix. Plain tmux keeps the pane alive but has no idea what is in it — a pane is just a pane. With a status signal, those 86 minutes become an 86-second gap.</div>
+  </figure>
+
+  <h3>Three states are enough</h3>
+  <p>Independently built tools — tmux plugins, status-bar monitors, Rust multiplexers, GUI overlays — converged on the same tiny state machine. Adopt it, because everything downstream (colours, sounds, push notifications) hangs off it.</p>
+
+  <div class="diagram">
+<pre>                    ┌───────────────────────────┐
+     you prompt ───►│         WORKING           │◄──── you answer
+                    └──┬────────────────────┬───┘         ▲
+   permission request,│                     │ turn ends   │
+   question, tool     │                     │             │
+   approval           ▼                     ▼             │
+            ┌──────────────────┐   ┌──────────────────┐   │
+            │   NEEDS INPUT    │   │       DONE       │   │
+            │  (blocking you)  │   │ (awaiting review)│   │
+            └────────┬─────────┘   └────────┬─────────┘   │
+                     └──────────────────────┴─────────────┘
+                     cleared when you FOCUS the pane, not
+                     when the event fires — otherwise the
+                     signal flashes and vanishes unseen</pre>
+    <div class="cap"><b>Fig 8.</b> <span class="chip c-work">working</span> <span class="chip c-wait">needs input</span> <span class="chip c-done">done</span> — the deferred reset is the detail that makes this usable. State clears on focus, using tmux <code>focus-events</code>.</div>
+  </div>
+
+  <h3>Where the state comes from, per agent</h3>
+  <p>Prefer real hooks over screen-scraping. Every major agent now emits something you can hang a script on; scraping the pane for a spinner glyph is the fallback, not the design.</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:18%">Agent</th><th style="width:30%">Event source</th><th>Signals available</th></tr></thead>
+    <tbody>
+      <tr><td><b>Claude Code</b></td><td>Hooks in <code>~/.claude/settings.json</code></td><td><code>UserPromptSubmit</code> → working, <code>PermissionRequest</code> → needs input, <code>Stop</code> → done. Agent teams add <code>TeammateIdle</code>, <code>TaskCreated</code>, <code>TaskCompleted</code>, all of which can exit 2 to push feedback back and keep the agent working.</td></tr>
+      <tr><td><b>opencode</b></td><td>JS/TS plugin in <code>~/.config/opencode/plugins/</code></td><td><code>session.created</code>, <code>session.status</code>, <code>session.idle</code>, <code>session.error</code>, <code>permission.asked</code>, <code>tool.execute.before/after</code>. Filter on <code>parentID</code> to ignore subagent noise and only alert for the main session.</td></tr>
+      <tr><td><b>Pi</b></td><td>TypeScript extension, auto-loaded from <code>~/.pi/agent/extensions/</code></td><td>Agent lifecycle events (e.g. <code>agent_end</code>) — the documented pattern is to write a transcript and signal a socket or <code>tmux wait-for -S</code> so a waiting parent unblocks instantly instead of polling.</td></tr>
+      <tr><td><b>Codex CLI</b></td><td><code>notify</code> command in <code>~/.codex/config.toml</code></td><td>A single notify hook you route into the same state script.</td></tr>
+      <tr><td><i>anything else</i></td><td>Process detection / pane scrape</td><td>Watch <code>pane_current_command</code> for known agent binaries; match spinner or prompt glyphs in the last lines of <code>capture-pane</code>. Treat this as a heuristic with timing you cannot rely on.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="pane">
+    <div class="ph"><span>~/.claude/settings.json + agent-state.sh</span><span class="tag">the whole mechanism</span></div>
+<pre><span class="c"># Claude Code hook → one script → tmux state</span>
+{
+  <span class="s">"hooks"</span>: {
+    <span class="s">"UserPromptSubmit"</span>: [{ <span class="s">"hooks"</span>: [{ <span class="s">"type"</span>:<span class="s">"command"</span>,
+      <span class="s">"command"</span>:<span class="s">"~/bin/agent-state.sh claude working"</span> }]}],
+    <span class="s">"PermissionRequest"</span>: [{ <span class="s">"hooks"</span>: [{ <span class="s">"type"</span>:<span class="s">"command"</span>,
+      <span class="s">"command"</span>:<span class="s">"~/bin/agent-state.sh claude needs-input"</span> }]}],
+    <span class="s">"Stop"</span>: [{ <span class="s">"hooks"</span>: [{ <span class="s">"type"</span>:<span class="s">"command"</span>,
+      <span class="s">"command"</span>:<span class="s">"~/bin/agent-state.sh claude done"</span> }]}]
+  }
+}
+
+<span class="c">#!/usr/bin/env bash   ~/bin/agent-state.sh</span>
+AGENT=$1; STATE=$2
+PANE=${TMUX_PANE:?not inside tmux}
+WIN=$(tmux display -p -t "$PANE" <span class="s">'#{session_name}:#{window_index}'</span>)
+
+<span class="k">case</span> "$STATE" <span class="k">in</span>
+  working)     BORDER=colour61 ; ICON=<span class="s">"●"</span> ;;
+  needs-input) BORDER=colour214; ICON=<span class="s">"◐"</span> ;;
+  done)        BORDER=colour34 ; ICON=<span class="s">"✓"</span> ;;
+<span class="k">esac</span>
+
+tmux set -p -t "$PANE" pane-active-border-style "fg=$BORDER"
+tmux rename-window -t "$WIN" "$ICON $(basename "$PWD")"
+
+<span class="c"># escalate only when you are not looking at it</span>
+<span class="k">if</span> [ "$(tmux display -p -t "$PANE" <span class="s">'#{pane_active}'</span>)" != 1 ] \
+   && [ "$STATE" != working ]; <span class="k">then</span>
+  tmux display-message -d 4000 "$AGENT $STATE in $WIN"
+  command -v terminal-notifier >/dev/null \
+    && terminal-notifier -title "$AGENT" -message "$STATE · $WIN"
+  <span class="c"># walking away? push it to your phone:</span>
+  <span class="c"># curl -s -d "$AGENT $STATE in $WIN" ntfy.sh/your-topic &gt;/dev/null</span>
+<span class="k">fi</span></pre>
+  </div>
+
+  <h3>Escalation ladder: choose loudness per state</h3>
+  <div class="diagram">
+<pre> agent hook ──► state script ──┬─► window-status style   ░ passive
+                               ├─► pane border colour    ░ passive
+                               ├─► status-right icon     ░ passive
+                               ├─► terminal bell / title ▒ ambient
+                               ├─► sound pack            ▓ active
+                               ├─► desktop notification  ▓ active
+                               └─► ntfy / Pushover / TG  █ remote
+
+ sensible defaults
+   WORKING      → passive only. Never interrupt for progress.
+   NEEDS INPUT  → passive + active. This is blocking you right now.
+   DONE         → passive; active only if the pane is not focused.
+   ERROR        → active + remote. You want to know from the sofa.</pre>
+    <div class="cap"><b>Fig 9.</b> Notification fan-out. Every channel is independent and should be independently toggleable — the fastest way to make people disable an agent monitor is to ding on every completion while they are watching the pane.</div>
+  </div>
+
+  <h3>Built-in tmux surfaces you already have</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:34%">Mechanism</th><th>Use for agents</th></tr></thead>
+    <tbody>
+      <tr><td><code>setw -g monitor-silence 60</code></td><td>Flag a window that has produced no output for 60s — a crude but zero-config "this agent is stuck or waiting" detector for agents with no hooks</td></tr>
+      <tr><td><code>setw -g monitor-bell on</code><br><code>set -g bell-action any</code></td><td>Many agents ring the terminal bell when they need input; propagate it instead of swallowing it</td></tr>
+      <tr><td><code>set -g visual-activity both</code></td><td>Status-line message <em>and</em> bell on background-window activity</td></tr>
+      <tr><td>Alert hooks: <code>alert-bell</code>, <code>alert-activity</code>, <code>alert-silence</code></td><td>Run arbitrary commands on alert — this is where you hang desktop notifications for hookless tools</td></tr>
+      <tr><td><code>rename-window</code> from the agent side</td><td>Turn five windows named "claude" into <code>fix auth</code>, <code>flaky test</code>, <code>draft post</code>. This alone changes the ergonomics of running five agents.</td></tr>
+      <tr><td><code>display-popup -E</code></td><td>Float any command over the workspace: an fzf file picker that inserts paths into the agent's prompt, a session switcher, a git diff review, an agent dashboard. The popup inherits the pane's cwd.</td></tr>
+      <tr><td><code>new-pane</code> (3.7+)</td><td>A floating pane that is <em>not</em> modal — unlike a popup, it behaves like a normal pane, so you can leave an agent running in it above the tiled layout</td></tr>
+      <tr><td><code>pane-scrollbars on</code> (3.6+)</td><td>Visual position in scrollback, useful when reviewing a long agent transcript</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note">
+    <span class="lbl">The fzf-popup trick</span>
+    <p>Bind <code>display-popup -E</code> to a fuzzy file picker that writes the selected path into the active pane. Every agent's built-in file autocomplete is worse than fzf, and pointing an agent at exact paths is one of the highest-leverage habits in agentic coding. Two lines of config replace a plugin ecosystem.</p>
+  </div>
+</section>
+
+<!-- ============ 06 ============ -->
+<section class="window" id="s06" data-name="api">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">06</span><span class="ttl">tmux as an API the agent can call</span><span class="fill"></span></h2>
+  <p class="lede">Three verbs cover almost every automation case, and their syntax has been stable for twenty years. This is the part that turns tmux from a nicer terminal into an orchestration substrate.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:22%">Verb</th><th>What it does</th><th style="width:34%">The gotcha that costs an hour</th></tr></thead>
+    <tbody>
+      <tr><td><code>send-keys</code></td><td>Types into a target pane as if from a keyboard, including control keys</td><td><code>Enter</code> must be a <b>separate argument</b>, not <code>\n</code> in the string. Use <code>-l</code> for literal text so prompt content is never interpreted as key names.</td></tr>
+      <tr><td><code>capture-pane</code></td><td>Reads a pane's current screen or scrollback without disturbing the process</td><td><code>-p</code> prints to stdout; <code>-S -200</code> reaches back into scrollback; <code>-J</code> joins wrapped lines. Without <code>-S</code> you only get the visible screen.</td></tr>
+      <tr><td><code>pipe-pane</code></td><td>Mirrors everything a pane emits to a command, continuously</td><td><code>-O</code> also captures existing output. This is your append-only audit log and it is one line.</td></tr>
+      <tr><td><code>wait-for</code></td><td>Blocks until a named channel is signalled from anywhere</td><td>Turns polling loops into instant callbacks: the agent signals <code>-S name</code> on completion, the waiter wakes immediately.</td></tr>
+      <tr><td><code>display -p '#{...}'</code></td><td>Queries any format variable: pane cwd, current command, active flag, title</td><td>The cheapest way to ask "is this pane running an agent, and is the user looking at it".</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>The orchestrator loop</h3>
+  <div class="diagram">
+<pre>  orchestrator (bash script, Makefile, or a parent agent)
+        │
+        │ 1  tmux new-window -d -n w1 -c "$WORKTREE"
+        │ 2  tmux send-keys -t w1 'pi' Enter
+        │ 3  tmux send-keys -t w1 -l "$PROMPT"      ← literal
+        │    tmux send-keys -t w1 Enter             ← separate
+        ▼
+   ┌──────────────┐   pipe-pane -O 'cat >> logs/w1.log'
+   │  worker w1   │ ─────────────────────────────────► audit log
+   └──────┬───────┘
+          │
+          ├─ POLL   (works everywhere, wasteful, laggy)
+          │    capture-pane -p -t w1 -S -5 | grep -q '❯' && done
+          │
+          └─ EVENT  (preferred: agent extension fires on completion)
+               agent hook:  tmux wait-for -S w1-done
+        ▲
+        │ 4  tmux wait-for w1-done      ← blocks, zero CPU, no lag
+        │ 5  read the transcript file the agent wrote, not the pane
+        └─────────────────────────────────────────────────────────</pre>
+    <div class="cap"><b>Fig 10.</b> Poll only when the agent gives you nothing better. Event signalling via <code>wait-for</code> or a Unix socket removes both the latency and the fragile prompt-glyph matching — and reading a transcript file the agent wrote beats scraping TUI chrome out of a pane.</div>
+  </div>
+
+  <div class="pane">
+    <div class="ph"><span>fanout.sh</span><span class="tag">dispatch N agents, wait for all</span></div>
+<pre><span class="c">#!/usr/bin/env bash</span>
+<span class="k">set</span> -euo pipefail
+SESSION=<span class="s">"fanout"</span>; LOGS=<span class="s">"$PWD/.agent-logs"</span>; mkdir -p "$LOGS"
+tmux has-session -t "$SESSION" 2>/dev/null || tmux new-session -d -s "$SESSION"
+
+dispatch() {                       <span class="c"># dispatch &lt;name&gt; &lt;dir&gt; &lt;prompt&gt;</span>
+  <span class="k">local</span> n=$1 dir=$2 prompt=$3
+  tmux new-window -d -t "$SESSION" -n "$n" -c "$dir"
+  tmux pipe-pane -O -t "$SESSION:$n" "cat >> $LOGS/$n.log"
+  tmux send-keys -t "$SESSION:$n" <span class="s">'pi'</span> Enter
+  sleep 1                          <span class="c"># let the TUI take the terminal</span>
+  tmux send-keys -t "$SESSION:$n" -l "$prompt"
+  tmux send-keys -t "$SESSION:$n" Enter
+}
+
+dispatch auth  .worktrees/auth  <span class="s">"Add refresh-token rotation. Commit when done."</span>
+dispatch tests .worktrees/tests <span class="s">"Fix the three flaky tests in spec/api. Commit."</span>
+dispatch docs  .worktrees/docs  <span class="s">"Update README for the new CLI flags. Commit."</span>
+
+<span class="c"># each agent's extension runs: tmux wait-for -S "$AGENT-done"</span>
+<span class="k">for</span> n <span class="k">in</span> auth tests docs; <span class="k">do</span>
+  tmux wait-for "$n-done" && <span class="g">echo</span> "✓ $n finished"
+<span class="k">done</span>
+tmux display-message -d 8000 <span class="s">"all agents finished — review diffs"</span></pre>
+  </div>
+
+  <h3>Giving an agent tmux access</h3>
+  <p>You can go further and let the agent itself drive tmux — read another pane, start a dev server, interrupt a hung process. There are two ways, and the simpler one is usually correct.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:26%">Approach</th><th>When it wins</th><th style="width:26%">Cost</th></tr></thead>
+    <tbody>
+      <tr><td><b>Plain bash + a convention in AGENTS.md</b></td><td>Almost always. Agents already know tmux subcommands; they just need to know <em>your</em> pane addresses and what is off-limits. Zero install, works with every agent.</td><td>You write the guardrails as prose, which the model may ignore</td></tr>
+      <tr><td><b>A tmux MCP server</b> (several exist, in Python, Node and Rust)</td><td>When you want typed tools, structured output, and enforced policy: read-only vs mutating vs destructive tiers, pane allowlists, command filters, and refusal to kill the agent's own pane</td><td>Another server to run and trust; only for MCP-capable agents (Pi ships no MCP by default)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note warn">
+    <span class="lbl">Four rules before you hand over the keys</span>
+    <p><b>1.</b> Never let an agent <code>send-keys</code> into a pane running another coding agent — you will get two models typing over each other, and a prompt injection channel between them.<br>
+    <b>2.</b> Deny <code>kill-server</code> and <code>kill-session</code> outright. Good MCP servers detect the agent's own pane and refuse self-destructive calls; a prose rule is weaker but better than nothing.<br>
+    <b>3.</b> <code>capture-pane</code> output is a credential leak. Anything printed in any pane — tokens, connection strings, <code>env</code> dumps — becomes model context the moment the agent reads it.<br>
+    <b>4.</b> Treat anything an agent reads from another pane, or receives from another agent, as untrusted input rather than an instruction. A message from a peer can propose work; it cannot authorise it.</p>
+  </div>
+
+  <h3>Cross-agent messaging without a framework</h3>
+  <p>Two agents with different context — one near a production-shaped database, one in a dev checkout — is a more useful pattern than ten agents on one repo. tmux is enough transport for it: one pane reads another's output, or both talk through a tiny local broker with tokens, TTLs and acks. Published designs for exactly this converge on a few rules worth stealing: give every message a correlation ID, expire stale mail so a restarted agent never acts on a cancelled task, put redaction on the <em>sender</em> side, and reject any message that asks a peer to run a shell command.</p>
+</section>
+
+<!-- ============ 07 ============ -->
+<section class="window" id="s07" data-name="agents">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">07</span><span class="ttl">Per-agent playbooks</span><span class="fill"></span></h2>
+  <p class="lede">The three terminal agents in the current race have genuinely different architectures, and each rewards a different tmux shape. Using the same layout for all three leaves value on the table.</p>
+
+  <figure>
+  <svg viewBox="0 0 820 250" role="img" aria-label="Bar chart of GitHub stars for terminal coding agents and multiplexers">
+    <text class="sv-d" x="14" y="16" font-size="10.5">GitHub stars, thousands — one curated snapshot, Aug 2026. Momentum, not quality.</text>
+    <g font-family="IBM Plex Mono, monospace" font-size="11.5">
+      <text x="14" y="42" fill="#12151b">opencode</text>       <rect x="118" y="32" width="620" height="13" fill="#5b4bd6"/><text x="746" y="42" fill="#4e555c">193</text>
+      <text x="14" y="63" fill="#12151b">Gemini CLI</text>     <rect x="118" y="53" width="340" height="13" fill="#5b4bd6" opacity=".78"/><text x="466" y="63" fill="#4e555c">106</text>
+      <text x="14" y="84" fill="#12151b">Codex CLI</text>      <rect x="118" y="74" width="334" height="13" fill="#5b4bd6" opacity=".78"/><text x="460" y="84" fill="#4e555c">104</text>
+      <text x="14" y="105" fill="#12151b">OpenHands</text>     <rect x="118" y="95" width="266" height="13" fill="#5b4bd6" opacity=".62"/><text x="392" y="105" fill="#4e555c">83</text>
+      <text x="14" y="126" fill="#12151b">Pi</text>            <rect x="118" y="116" width="265" height="13" fill="#5b4bd6" opacity=".62"/><text x="391" y="126" fill="#4e555c">83</text>
+      <text x="14" y="147" fill="#12151b">Cline CLI</text>     <rect x="118" y="137" width="210" height="13" fill="#5b4bd6" opacity=".5"/><text x="336" y="147" fill="#4e555c">66</text>
+    </g>
+    <line x1="14" y1="164" x2="806" y2="164" stroke="#c2c7be"/>
+    <text class="sv-d" x="14" y="182" font-size="10.5">multiplexers, for scale</text>
+    <g font-family="IBM Plex Mono, monospace" font-size="11.5">
+      <text x="14" y="204" fill="#12151b">tmux</text>          <rect x="118" y="194" width="151" height="13" fill="#1c7a62"/><text x="277" y="204" fill="#4e555c">47</text>
+      <text x="14" y="225" fill="#12151b">Zellij</text>        <rect x="118" y="215" width="106" height="13" fill="#1c7a62" opacity=".6"/><text x="232" y="225" fill="#4e555c">33</text>
+    </g>
+    <text class="sv-d" x="14" y="245" font-size="10">tmux predates all of them by 17 years and is the substrate several of them target.</text>
+  </svg>
+  <div class="cap"><b>Fig 11.</b> The terminal-agent field is genuinely three-way and unsettled. Star counts move fast and measure attention, not fit — but they explain why tmux integrations now ship as first-party docs rather than community hacks.</div>
+  </figure>
+
+  <h3>opencode — the client/server split changes the topology</h3>
+  <p>opencode is not one process. Running <code>opencode</code> starts a server <em>and</em> a TUI client that talks to it. That architectural fact is the most under-used tmux lever available, because it means the durable thing and the visible thing can live in different places.</p>
+
+  <div class="diagram">
+<pre> conventional (fine)          server/client split (better under tmux)
+ ┌────────────────┐           ┌──────────────────────────────────────┐
+ │ window 2       │           │ window 0  ── opencode serve --port   │
+ │  opencode      │           │              4096   (never touched)  │
+ │  (TUI+server)  │           ├──────────────────────────────────────┤
+ └────────────────┘           │ window 2  ── opencode attach         │
+                              │              http://localhost:4096   │
+ kill the pane and you        ├──────────────────────────────────────┤
+ kill the session             │ window 3  ── opencode run --attach   │
+                              │              ... "one-shot task"     │
+                              └──────────────────────────────────────┘
+                              client panes are disposable; the server,
+                              its MCP connections and warm state persist</pre>
+    <div class="cap"><b>Fig 12.</b> With <code>serve</code> + <code>attach</code>, you can close and reopen the TUI freely, drive the same server from scripts with <code>run --attach</code> (skipping MCP cold-start on every invocation), and reach it from another machine. Set <code>OPENCODE_SERVER_PASSWORD</code> the moment the hostname is not <code>localhost</code>.</div>
+  </div>
+
+  <ul>
+    <li><b>Subagent panes.</b> Community plugins hook <code>session.created</code> for child sessions and auto-split a tmux pane running <code>opencode attach &lt;server&gt; --session &lt;id&gt;</code>, then close it when the child finishes. This requires starting opencode with an explicit <code>--port</code> so the plugin can construct the server URL — the single most common reason these integrations silently do nothing.</li>
+    <li><b>Session browsing.</b> A tmux plugin can read opencode's local session database and give you a <code>prefix + O</code> popup that lists sessions by directory, status and age, then resumes one in a window. Child sessions fold into their parent so an orchestrator run reads as one row.</li>
+    <li><b>Layout.</b> <code>main-vertical</code> with the main pane at ~60% is the reported sweet spot: agent large on one side, spawned children stacked on the other.</li>
+    <li><b>Gotchas.</b> Leader is <code>Ctrl+X</code>, so it rarely collides with tmux. Escape latency and WSL2 clipboard are the two setup complaints that recur; both are fixed in Section 02.</li>
+  </ul>
+
+  <h3>Pi — designed on the assumption that you have tmux</h3>
+  <p>Pi is unusual: it deliberately ships without subagents, background bash, plan mode, todos or MCP, and its documentation names tmux as the answer for two of those. This is not a gap, it is a design position — the harness stays small and you compose it with the tools you already run.</p>
+
+  <div class="tw">
+  <table class="narrow">
+    <thead><tr><th style="width:34%">Pi omits</th><th>Documented substitute</th></tr></thead>
+    <tbody>
+      <tr><td>Sub-agents</td><td>Spawn Pi instances via tmux, or install an extension that does it your way</td></tr>
+      <tr><td>Background bash</td><td>tmux. Full observability, direct interaction, no hidden process</td></tr>
+      <tr><td>Plan mode</td><td>Write plans to files</td></tr>
+      <tr><td>Built-in todos</td><td>A <code>TODO.md</code> — the docs argue built-in todo state confuses models</td></tr>
+      <tr><td>Permission popups</td><td>Run in a container, or build a confirmation flow as an extension</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p>The consequence is a small but sophisticated ecosystem of Pi extensions that treat tmux as the runtime. The patterns worth knowing:</p>
+  <ul>
+    <li><b>Side agents.</b> <code>/agent &lt;task&gt;</code> spawns a child Pi in its own tmux window and git worktree; the parent's status line lists which children are waiting; you switch windows to steer one; "LGTM" merges and tears everything down. The framing is deliberate — children are single-use and die with their topic branch, rather than long-lived role-based agents messaging each other.</li>
+    <li><b>Instant completion signalling.</b> A Pi extension fires on <code>agent_end</code>, writes a clean transcript to a file, and signals a Unix socket or a tmux channel. A <code>wait.sh</code> blocks on that channel and returns the moment the child finishes — no polling, no scraping TUI chrome, and the parent reads the transcript file rather than the pane.</li>
+    <li><b>Supervision.</b> Extensions exist that turn the current session into a supervisor which spawns a worker Pi in another pane and enforces process rules (for example, hand off before context exceeds a threshold).</li>
+    <li><b>Keys.</b> Set <code>extended-keys-format csi-u</code> or Shift+Enter will submit instead of inserting a newline. Pi requests extended key reporting automatically when the Kitty keyboard protocol is unavailable.</li>
+  </ul>
+
+  <h3>Claude Code — agent teams put tmux in the product</h3>
+  <p>Claude Code's experimental agent teams feature spawns each teammate as a separate Claude Code session. Its split-pane display mode is implemented on tmux (or iTerm2), which makes tmux a supported backend rather than a workaround.</p>
+  <ul>
+    <li>Enable with <code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code>. The default display mode is <b>in-process</b> (it changed from <code>auto</code> in v2.1.179), so an upgrade can silently stop opening panes — set <code>teammateMode</code> explicitly to <code>"auto"</code> or <code>"tmux"</code> in <code>~/.claude/settings.json</code>.</li>
+    <li>Split panes are <b>not supported</b> in VS Code's integrated terminal, Windows Terminal, or Ghostty. On macOS the docs suggest <code>tmux -CC</code> inside iTerm2 as the entry point — but note the conflict flagged in Section 02 if you also use Claude Code's fullscreen renderer.</li>
+    <li>Team config, including each teammate's tmux pane ID, lives under <code>~/.claude/teams/{team}/config.json</code>. It is machine-managed state; do not hand-edit it.</li>
+    <li>Start with 3–5 teammates, 5–6 tasks each, and never two teammates on the same file. Token cost scales linearly with teammate count while speedup does not.</li>
+    <li>If a lead exits badly, teammate tmux sessions can be orphaned. <code>tmux ls</code>, then <code>tmux kill-session -t &lt;name&gt;</code> on the leftovers.</li>
+    <li>Quality gates: <code>TeammateIdle</code>, <code>TaskCreated</code> and <code>TaskCompleted</code> hooks can exit with code 2 to reject the transition and send feedback — a teammate about to go idle can be pushed back to work.</li>
+  </ul>
+
+  <div class="note">
+    <span class="lbl">A note on which tool "wins"</span>
+    <p>You do not have to pick. Because every one of these is a process in a pty, a single tmux session can run opencode in window 2, Pi in window 3 and Claude Code in window 4 against three worktrees of the same repo. Several published setups do exactly that, and the multiplexer is the only reason it is boring rather than an integration project.</p>
+  </div>
+</section>
+
+<!-- ============ 08 ============ -->
+<section class="window" id="s08" data-name="remote">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">08</span><span class="ttl">Remote, detached, and from your phone</span><span class="fill"></span></h2>
+  <p class="lede">The original tmux use case turns out to be the highest-leverage agent workflow: put the agents on a box that never sleeps, and treat every device you own as a viewport.</p>
+
+  <div class="pane">
+    <div class="ph"><span>~/.ssh/config + shell</span><span class="tag">attach-or-create</span></div>
+<pre><span class="c"># one command, from any machine, always lands in the same place</span>
+ssh box -t <span class="s">'tmux new-session -A -s main'</span>
+
+<span class="c"># -A = attach if it exists, create if it doesn't. This single flag</span>
+<span class="c"># removes every "did I already start a session" decision.</span>
+
+<span class="c"># flaky network (hotspot, train, café)? mosh instead of ssh:</span>
+mosh box -- tmux new-session -A -s main
+<span class="c"># mosh is UDP with state sync; ssh is TCP and suffers on jitter.</span>
+<span class="c"># open UDP 60000-61000 on the firewall.</span>
+
+<span class="c"># make it the default login experience</span>
+<span class="c"># ~/.bashrc on the server:</span>
+[ -z "$TMUX" ] && [ -n "$SSH_TTY" ] && exec tmux new-session -A -s "$USER"</pre>
+  </div>
+
+  <h3>Why this matters more than it used to</h3>
+  <p>An agent run is a long-lived, network-independent process that periodically needs a human decision. That is precisely the workload SSH plus tmux was built for. The published pattern is consistent across everyone doing it seriously: a cheap VPS, one named session per user, agents in windows, notifications pushed to a phone, and a reattach from whatever device is nearby when something needs a decision.</p>
+
+  <div class="diagram">
+<pre>            ┌────────────┐   push (ntfy / Pushover / Telegram)
+            │   phone    │◄──────────────────────────────┐
+            └─────┬──────┘                               │
+                  │ ssh -t 'tmux new -A -s main'         │
+                  ▼                                      │
+   ┌────────────────────────────────────────────┐        │
+   │  VPS · tmux server · never disconnects     │        │
+   │   1:orchestrator   2:agent-a   3:agent-b   │────────┘
+   │   4:dev-server     5:logs                  │  agent hook fires
+   └────────────────────────────────────────────┘  on needs-input
+            ▲                    ▲
+            │                    │
+      ┌─────┴─────┐        ┌─────┴─────┐
+      │  laptop   │        │  desktop  │   multiple clients may attach
+      └───────────┘        └───────────┘   to the same session at once</pre>
+    <div class="cap"><b>Fig 13.</b> Multi-client attach is why <code>detach-on-destroy off</code> and <code>aggressive-resize on</code> matter: without them, one client closing a window or having a smaller screen degrades the session for everyone else.</div>
+  </div>
+
+  <div class="note warn">
+    <span class="lbl">The trade you are making</span>
+    <p>Unattended remote agents almost always means disabling permission prompts. Even people who do this routinely constrain it: limit no-approval runs to tasks where hostile instructions cannot plausibly enter the context, and move the blast radius into a container. A persistent session with permissions off, reachable from a phone, running against a repo with production credentials in <code>.env</code> is not a workflow — it is an incident waiting for a trigger.</p>
+  </div>
+</section>
+
+<!-- ============ 09 ============ -->
+<section class="window" id="s09" data-name="persist">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">09</span><span class="ttl">Reproducible workspaces</span><span class="fill"></span></h2>
+  <p class="lede">Sessions survive disconnects. They do not survive reboots, and they do not rebuild themselves. Decide deliberately which parts of your workspace are declarative.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:24%">Layer</th><th>Tool</th><th style="width:34%">Honest limitation</th></tr></thead>
+    <tbody>
+      <tr><td><b>Restore after reboot</b></td><td><code>tmux-resurrect</code> + <code>tmux-continuum</code> via TPM. Continuum autosaves (15-minute default) and can restore on server start.</td><td>Restores <b>layout</b>, not running programs. Bringing processes back is opt-in via a <code>@resurrect-processes</code> allowlist. Do not assume your agent restarts — and think hard before you make it, since an agent auto-resuming unattended after a reboot is a surprising thing to arrange.</td></tr>
+      <tr><td><b>Declarative project layout</b></td><td><code>tmuxp</code> (YAML, Python), <code>tmuxinator</code> (YAML, Ruby), <code>smug</code> (YAML, Go), or a 20-line bash script</td><td>Static. Great for "agent + editor + logs, in this repo"; wrong tool for worktrees that appear and vanish all day.</td></tr>
+      <tr><td><b>Fast session switching</b></td><td><code>sesh</code>, <code>sessionx</code>, or <code>display-popup -E</code> + fzf + zoxide</td><td>None worth mentioning. This is the highest-value 10 minutes of setup in the whole document once you run more than three projects.</td></tr>
+      <tr><td><b>Dynamic worktree windows</b></td><td>workmux / dmux / pi-side-agents / your own script</td><td>Ephemeral by design — do not try to make these declarative, make teardown reliable instead.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="pane">
+    <div class="ph"><span>~/.config/tmuxp/agent.yaml</span><span class="tag">tmuxp load agent</span></div>
+<pre>session_name: agent
+windows:
+  - window_name: supervise
+    layout: main-vertical
+    shell_command_before:
+      - cd ~/code/project
+    panes:
+      - opencode
+      - nvim .
+      - tail -f dev.log
+  - window_name: services
+    panes:
+      - npm run dev
+      - docker compose logs -f db</pre>
+  </div>
+
+  <div class="pane">
+    <div class="ph"><span>~/.tmux.conf</span><span class="tag">popup tooling — the composable part</span></div>
+<pre><span class="c"># float any command over the workspace; it inherits the pane's cwd</span>
+<span class="k">bind</span> C-t display-popup -E -w 60% -h 60% <span class="s">"tmux-bro"</span>          <span class="c"># project switcher</span>
+<span class="k">bind</span> C-j display-popup -E -w 30% -h 20% <span class="s">"tmux-session-switcher"</span>
+<span class="k">bind</span> C-f display-popup -E -w 60% -h 60% <span class="s">"tmux-file-picker"</span>  <span class="c"># → agent prompt</span>
+<span class="k">bind</span> C-g display-popup -E -w 80% -h 80% <span class="s">"lazygit"</span>           <span class="c"># review the diff</span>
+
+<span class="c"># tmux 3.7: a floating pane that is NOT modal — leave an agent in it</span>
+<span class="k">bind</span> <span class="s">'*'</span> new-pane -c <span class="s">"#{pane_current_path}"</span></pre>
+  </div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section class="window" id="s10" data-name="security">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">10</span><span class="ttl">Blast radius</span><span class="fill"></span></h2>
+  <p class="lede">tmux gives you visibility, which is a real safety property — you can see what the agent is doing and interrupt it. It gives you no containment whatsoever.</p>
+
+  <div class="diagram">
+<pre>┌─ host ───────────────────────────────────────────────────────┐
+│  your real filesystem, keys, SSH agent, network, creds       │
+│                                                              │
+│  ┌─ tmux ─────────────────────────────────────────────────┐  │
+│  │  pty isolation · visibility · interruptibility         │  │
+│  │  NOT a security boundary — panes share everything      │  │
+│  │                                                        │  │
+│  │  ┌─ git worktree ───────────────────────────────────┐  │  │
+│  │  │  agents cannot corrupt each other's files        │  │  │
+│  │  │  can still write anywhere outside the tree       │  │  │
+│  │  │                                                  │  │  │
+│  │  │  ┌─ OS sandbox ───────────────────────────────┐  │  │  │
+│  │  │  │  Seatbelt (macOS) · bubblewrap + Landlock  │  │  │  │
+│  │  │  │  filesystem + network policy, and no       │  │  │  │
+│  │  │  │  container cold-start per tool call        │  │  │  │
+│  │  │  │  ┌─ container / microVM ────────────────┐  │  │  │  │
+│  │  │  │  │  hardware / namespace boundary —     │  │  │  │  │
+│  │  │  │  │  for repos that touch user data      │  │  │  │  │
+│  │  │  │  └──────────────────────────────────────┘  │  │  │  │
+│  │  │  └────────────────────────────────────────────┘  │  │  │
+│  │  └──────────────────────────────────────────────────┘  │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+  each ring is cheap to add; none of them replaces the others</pre>
+    <div class="cap"><b>Fig 14.</b> The layers, and where tmux sits. Note that curated sandbox inventories classify tmux+worktree tooling as workflow isolation that is useful alongside a real sandbox, explicitly not as a boundary by itself.</div>
+  </div>
+
+  <h3>tmux-specific hygiene</h3>
+  <ul>
+    <li><b>Scrollback is a secret store.</b> With <code>history-limit 100000</code>, anything ever printed in a pane — a token, a connection string, an accidental <code>env</code> — is retrievable by anything that can call <code>capture-pane</code>, including an agent you gave tmux access to.</li>
+    <li><b><code>pipe-pane</code> logs are evidence and liability.</b> They are the best audit trail you can get for one line of config, and they write plaintext agent output to disk. Put them somewhere you would put logs, not in the repo, and rotate them.</li>
+    <li><b><code>synchronize-panes</code> is a loaded gun.</b> It broadcasts every keystroke to every pane in the window. Genuinely useful for kicking off the same setup prompt across three agents; catastrophic when you forget it is on. Bind it to a key with a visible status-bar indicator so the state is never ambiguous.</li>
+    <li><b>Cross-pane reads are an injection channel.</b> Content an agent reads from another pane — issue text, a web page rendered in a browser TUI, another agent's output — is untrusted input. Anything downstream that can act on it needs a policy that is not "the model will notice".</li>
+    <li><b>Prefer OS sandboxes over containers for the inner loop.</b> Agents fire hundreds of sub-millisecond shell calls per session; per-command container start-up is a non-starter, which is why the major agents ship Seatbelt/bubblewrap-style process sandboxes instead. Reach for containers or microVMs at the session boundary, not the tool-call boundary.</li>
+  </ul>
+</section>
+
+<!-- ============ 11 ============ -->
+<section class="window" id="s11" data-name="traps">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">11</span><span class="ttl">Failure modes worth memorising</span><span class="fill"></span></h2>
+  <p class="lede">Collected from setup posts, issue trackers and release notes. Most of these present as "the agent is broken" and are actually configuration.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:30%">Symptom</th><th style="width:34%">Real cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>Escape does nothing when you try to interrupt the agent</td><td>tmux is waiting to see whether an escape sequence follows</td><td><code>set -s escape-time 0</code> (or 10)</td></tr>
+      <tr><td>Shift+Enter submits instead of inserting a newline</td><td>tmux collapsed the modifier; the agent received a bare <code>\r</code></td><td><code>extended-keys on</code> + <code>extended-keys-format csi-u</code> (tmux 3.5+), plus <code>terminal-features 'xterm*:extkeys'</code></td></tr>
+      <tr><td>Agent desktop notifications never arrive</td><td>tmux swallowed the escape sequence instead of forwarding it</td><td><code>set -g allow-passthrough on</code></td></tr>
+      <tr><td>Copying agent output yields nothing</td><td>OSC 52 not routed to the system clipboard</td><td><code>set -g set-clipboard on</code> (+ passthrough on WSL)</td></tr>
+      <tr><td>A Ctrl-chord the agent documents does nothing</td><td>tmux bound it first and never passes it on</td><td><code>bind o send-keys C-o</code> — an explicit passthrough per chord you need</td></tr>
+      <tr><td>Scrolling and selection break in the agent's fullscreen UI</td><td>iTerm2 <code>tmux -CC</code> control mode versus the alternate screen buffer</td><td>Use plain tmux inside iTerm2 when the agent renders fullscreen</td></tr>
+      <tr><td>Claude Code stopped opening split panes after an update</td><td>Default <code>teammateMode</code> changed from <code>auto</code> to <code>in-process</code></td><td>Set <code>teammateMode</code> explicitly in <code>settings.json</code></td></tr>
+      <tr><td>opencode subagent panes never appear</td><td>Plugin cannot build the server URL without an explicit port</td><td>Start with <code>opencode --port 4096</code> (matching the plugin's config)</td></tr>
+      <tr><td>Config changes have no effect after upgrading tmux</td><td>Old server binary still running your sessions</td><td><code>tmux kill-server</code>, then start fresh</td></tr>
+      <tr><td>Prompt text sent by a script gets mangled</td><td><code>send-keys</code> interpreted parts of it as key names</td><td>Send the text with <code>-l</code> (literal), then <code>Enter</code> as a separate call</td></tr>
+      <tr><td>Orchestrator hangs forever waiting on an agent</td><td>Polling for a prompt glyph that the TUI redraws or never emits</td><td>Have the agent signal completion (<code>tmux wait-for -S</code> or a socket) and read a transcript file, not the pane</td></tr>
+      <tr><td>Stray tmux sessions after a crash</td><td>Orphaned teammate/child sessions whose parent died</td><td><code>tmux ls</code> then <code>tmux kill-session -t &lt;name&gt;</code>; shut teams down from the lead before exiting</td></tr>
+      <tr><td>Every window is named "claude"</td><td>Nothing renames them</td><td>Rename from an agent hook, or derive the name from pane content</td></tr>
+      <tr><td>One agent's <code>.env</code> edit broke the others</td><td>Symlinked instead of copied into each worktree</td><td>Copy config, symlink only caches</td></tr>
+      <tr><td>tmux dumps you out entirely when a worktree window closes</td><td><code>detach-on-destroy</code> default</td><td><code>set -g detach-on-destroy off</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section class="window" id="s12" data-name="ladder">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">12</span><span class="ttl">Adoption ladder</span><span class="fill"></span></h2>
+  <p class="lede">Ordered by return on time invested. Most of the value is in the first two rungs; the last two are only worth it if you are genuinely running many agents.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:8%">Rung</th><th style="width:32%">Do this</th><th style="width:16%">Time</th><th>Payoff</th></tr></thead>
+    <tbody>
+      <tr><td><b>1</b></td><td>Paste the agent baseline config from Section 02. Restart the server.</td><td>10 min</td><td>Your keys reach the agent; its notifications reach you; scrollback survives a long run</td></tr>
+      <tr><td><b>2</b></td><td>One session per project, one window per task. Name them. Add a popup session switcher.</td><td>20 min</td><td>Instant context switching; the window list becomes your work list</td></tr>
+      <tr><td><b>3</b></td><td>Document your pane-addressing convention in <code>AGENTS.md</code>.</td><td>10 min</td><td>The agent reads your dev-server logs and runs commands in the right pane without you relaying output</td></tr>
+      <tr><td><b>4</b></td><td>Wire agent hooks → a state script → window title, pane border and one active channel.</td><td>1 hr</td><td>Kills the idle-agent tax. Highest-value hour in this document.</td></tr>
+      <tr><td><b>5</b></td><td>Adopt worktree-per-window, manually or with a tool. Copy <code>.env</code>, symlink caches, isolate ports.</td><td>1–2 hrs</td><td>Real parallelism: 2–4 agents that cannot corrupt each other</td></tr>
+      <tr><td><b>6</b></td><td>Add <code>pipe-pane</code> audit logs and an OS sandbox for anything running without approvals.</td><td>1 hr</td><td>You can answer "what did it actually do" and bound what it could have done</td></tr>
+      <tr><td><b>7</b></td><td>Move the whole thing to a remote box. <code>ssh -t 'tmux new -A -s main'</code>, push notifications to your phone.</td><td>2 hrs</td><td>Agents run while your laptop is closed; you approve from anywhere</td></tr>
+      <tr><td><b>8</b></td><td>Script fan-out and event-driven completion (<code>wait-for</code> or a socket broker).</td><td>a weekend</td><td>Only worth it above ~4 concurrent agents. Below that, you are the scheduler and you are faster.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ 13 ============ -->
+<section class="window" id="s13" data-name="verdict">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">13</span><span class="ttl">When not to use tmux</span><span class="fill"></span></h2>
+  <p class="lede">The interesting question in 2026 is not tmux versus nothing. It is tmux versus the agent-aware multiplexers that grew up around it.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th style="width:20%">Option</th><th>What it is</th><th style="width:30%">Choose it when</th></tr></thead>
+    <tbody>
+      <tr><td><b>tmux</b></td><td>The substrate. Server-side persistence, remote attach, a 20-year-stable scripting API, the largest plugin ecosystem, and no awareness of agents whatsoever.</td><td>You SSH anywhere, you script your workflow, or you want one thing that hosts every agent CLI including ones that don't exist yet</td></tr>
+      <tr><td><b>tmux + agent plugins</b></td><td>Sidebars, status-bar monitors, state indicators, session browsers, worktree runners — layered on top, reading via <code>capture-pane</code> and hooks without interfering.</td><td>Almost everyone running more than two agents. This is the default recommendation.</td></tr>
+      <tr><td><b>Agent-native multiplexers</b><br>(cmux, Herdr, and others)</td><td>Rewrites that make per-pane agent state a first-class concept, with programmatic APIs over a local socket so an orchestrating agent can spawn panes, inject prompts and block on completion.</td><td>Local, single-machine, many-agent work where state awareness matters more than ecosystem — and you accept a young tool. Some are macOS-only; check remote-persistence support before committing.</td></tr>
+      <tr><td><b>Zellij</b></td><td>Rust multiplexer, discoverable mode-based keys, built-in session serialization, WebAssembly plugins.</td><td>You want better defaults for human work. For orchestration, note that agent tooling overwhelmingly targets tmux's <code>send-keys</code> API, so you will be off the beaten path.</td></tr>
+      <tr><td><b>Native terminal tabs</b></td><td>Your terminal's own splits and tabs.</td><td>You work entirely locally, never SSH, and never run anything that must outlive the window. Reaching for tmux here is ceremony with no payoff.</td></tr>
+      <tr><td><b>GUI orchestrators</b></td><td>Desktop apps that manage parallel agents in worktrees with visual review.</td><td>You do not want to live in a terminal. Real trade: you leave your existing tooling behind and bet on a young product category.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note">
+    <span class="lbl">The argument against all of this</span>
+    <p>A recurring and honest position in community discussion: pane-hopping is a transitional interface. If orchestration matures, you will type into one panel where a coordinating agent lives and it will handle the rest — no more switching between windows to babysit workers. That is a plausible future, and it is not this year. The hedge is cheap: everything in this document is composed from generic primitives, so if a better interface arrives, you lose configuration, not a workflow.</p>
+    <p>The counter-argument is equally worth taking seriously — the more autonomous the agents get, the more valuable the ability to <em>watch</em> them becomes. Visibility and interruptibility are exactly what tmux sells.</p>
+  </div>
+</section>
+
+<!-- ============ 14 ============ -->
+<section class="window" id="s14" data-name="sources">
+  <h2 class="winhead"><span class="cnr">┌─</span><span class="num">14</span><span class="ttl">Sources</span><span class="fill"></span></h2>
+  <p class="lede">Primary documentation, practitioner write-ups and the tools referenced above. Retrieved August 2026 — this area moves quickly, so verify version-specific claims against current docs.</p>
+
+  <h4>Official documentation</h4>
+  <ul class="srcs">
+    <li>tmux release notes &amp; changelog — <a href="https://github.com/tmux/tmux/releases">github.com/tmux/tmux/releases</a>, <a href="https://tmux.info/releases">tmux.info/releases</a></li>
+    <li>tmux Advanced Use wiki (alerts, hooks, formats) — <a href="https://github.com/tmux/tmux/wiki/Advanced-Use">github.com/tmux/tmux/wiki</a></li>
+    <li>Pi · tmux setup (extended keys, csi-u) — <a href="https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/tmux.md">earendil-works/pi · docs/tmux.md</a></li>
+    <li>Pi · coding agent README (why no subagents / background bash) — <a href="https://github.com/earendil-works/pi/tree/main/packages/coding-agent">earendil-works/pi</a> · <a href="https://pi.dev/">pi.dev</a></li>
+    <li>opencode CLI reference (<code>serve</code>, <code>attach</code>, <code>run --attach</code>) — <a href="https://opencode.ai/docs/cli/">opencode.ai/docs/cli</a></li>
+    <li>opencode server &amp; plugin docs — <a href="https://opencode.ai/docs/server/">opencode.ai/docs/server</a> · <a href="https://opencode.ai/docs/plugins/">opencode.ai/docs/plugins</a></li>
+    <li>Claude Code agent teams — <a href="https://code.claude.com/docs/en/agent-teams">code.claude.com/docs/en/agent-teams</a></li>
+  </ul>
+
+  <h4>Practitioner write-ups</h4>
+  <ul class="srcs">
+    <li>Raine Virta — <a href="https://raine.dev/blog/my-tmux-setup/">My setup, and why tmux workflow is better than ever</a>; <a href="https://raine.dev/blog/introduction-to-workmux/">workmux: git worktrees + tmux</a>; <a href="https://raine.dev/blog/tmux-file-picker-for-ai-agents/">tmux popup file picker for agents</a></li>
+    <li>Hwee-Boon Yar — <a href="https://hboon.com/using-tmux-with-claude-code/">Using tmux with Claude Code</a> (pane addressing, passthrough bindings, capture-pane)</li>
+    <li>Andrey Morskov — <a href="https://morskov.com/blog/2026/04/19/tmux-agent-indicator-en">Seeing what your AI agents are doing in tmux</a> (three-state model, hook wiring, notification backends)</li>
+    <li>Marcus Schuler / Implicator — <a href="https://www.implicator.ai/tmux-keeps-ai-coding-agents-running-for-days-after-you-disconnect/">tmux keeps AI coding agents running for days</a>; <a href="https://www.implicator.ai/professional-tutorial-build-a-pi-to-pi-agent-communication-bus-2/">Build a Pi-to-Pi agent communication bus</a></li>
+    <li>Pasquale Pillitteri — <a href="https://pasqualepillitteri.it/en/news/3493/tmux-runtime-coding-agents-2026">tmux in the coding agents era</a> (four properties, send-keys/capture-pane/pipe-pane patterns)</li>
+    <li>OpenReplay — <a href="https://blog.openreplay.com/tmux-ai-guide/">A developer's guide to tmux in the age of AI</a> (resurrect/continuum caveats, tmuxp, synchronize-panes)</li>
+    <li>Luke Manning — <a href="https://lukemanning.ie/blog/opencode-tmux-getting-used-to-keybindings">Trying to use opencode inside tmux was a struggle</a> (escape-time, clipboard on WSL2)</li>
+    <li>Kaushik Gopal — <a href="https://kau.sh/blog/agent-forking/">Forking subagents in an AI coding session with tmux</a></li>
+    <li>Scott Berrevoets — <a href="https://www.scottberrevoets.com/2026/02/17/scaling-my-gittmux-workflows-for-ai-agents/">Scaling my git/tmux workflows for AI agents</a></li>
+    <li>Upsun — <a href="https://developer.upsun.com/posts/ai/git-worktrees-for-parallel-ai-coding-agents">Git worktrees for parallel AI coding agents</a></li>
+    <li>Dotzlaw — <a href="https://dotzlaw.com/insights/claude-code-13-herdr-parallel-agent-sessions/">Herdr and parallel agent sessions</a> (the idle-agent cost model)</li>
+  </ul>
+
+  <h4>Tools referenced</h4>
+  <ul class="srcs">
+    <li><a href="https://github.com/raine/workmux">workmux</a> — worktrees + tmux windows, agent status in the window list</li>
+    <li><a href="https://github.com/formkit/dmux">dmux</a> — worktrees + tmux panes, many agent CLIs</li>
+    <li><a href="https://github.com/pasky/pi-side-agents">pi-side-agents</a> — Pi children in tmux windows + worktrees</li>
+    <li><a href="https://github.com/masta-g3/pi-tmux-subagents">pi-tmux-subagents</a> · <a href="https://github.com/offline-ant/pi-tmux">pi-tmux</a> — Pi tmux extensions</li>
+    <li><a href="https://github.com/accessd/tmux-agent-indicator">tmux-agent-indicator</a> · <a href="https://github.com/accessd/agent-indicator">agent-indicator</a> — state → borders, titles, sound, push</li>
+    <li><a href="https://github.com/hiroppy/tmux-agent-sidebar">tmux-agent-sidebar</a> — cross-session agent sidebar (Claude, Codex, opencode)</li>
+    <li><a href="https://github.com/mjjo16/marmonitor">marmonitor</a> — agent counts and attention pills in the status bar</li>
+    <li><a href="https://github.com/CoderMungan/tmux-opencode">tmux-opencode</a> · <a href="https://github.com/FloSchl8/opencode-tmux">opencode-tmux</a> — opencode session browsing &amp; subagent panes</li>
+    <li><a href="https://github.com/tmux-python/libtmux-mcp">libtmux-mcp</a> · <a href="https://github.com/bnomei/tmux-mcp">tmux-mcp</a> — MCP servers with safety tiers</li>
+    <li><a href="https://github.com/tmux-plugins/tmux-resurrect">tmux-resurrect</a> · <a href="https://github.com/tmux-plugins/tmux-continuum">tmux-continuum</a> · <a href="https://github.com/tmux-plugins/tpm">TPM</a></li>
+    <li><a href="https://tmuxp.readthedocs.io/">tmuxp</a> · <a href="https://github.com/tmuxinator/tmuxinator">tmuxinator</a> · <a href="https://github.com/ivaaaan/smug">smug</a> · <a href="https://github.com/joshmedeski/sesh">sesh</a></li>
+    <li><a href="https://github.com/webcoyote/awesome-AI-sandbox">awesome-AI-sandbox</a> — sandbox inventory and honest classifications</li>
+  </ul>
+
+  <div class="foot">
+    Compiled from public documentation and community write-ups, August 2026.<br>
+    Version-specific behaviour (tmux 3.5/3.6/3.7 options, Claude Code teammateMode defaults, opencode plugin events) changes often — treat every version number here as a claim to re-check, not a constant.
+  </div>
+</section>
+
+</div><!-- /wrap -->
+
+<div class="statusline" role="navigation" aria-label="Section navigation">
+  <span class="sl-left">[tmux-agents]</span>
+  <nav class="sl-wins" id="slWins"></nav>
+  <span class="sl-right"><b id="slPct">0%</b></span>
+</div>
+
+<script>
+(function(){
+  var secs = [].slice.call(document.querySelectorAll('section.window'));
+  var brief = {id:'', name:'brief'};
+  var nav = document.getElementById('slWins');
+  var links = [];
+
+  // window 0 = top of document
+  var a0 = document.createElement('a');
+  a0.href = '#'; a0.textContent = '0:brief'; a0.dataset.idx = '0';
+  nav.appendChild(a0); links.push(a0);
+
+  secs.forEach(function(s, i){
+    var a = document.createElement('a');
+    a.href = '#' + s.id;
+    a.textContent = (i+1) + ':' + s.dataset.name;
+    a.dataset.idx = String(i+1);
+    nav.appendChild(a);
+    links.push(a);
+  });
+
+  function setActive(idx){
+    links.forEach(function(a){
+      var on = a.dataset.idx === String(idx);
+      if (on !== a.classList.contains('on')) a.classList.toggle('on', on);
+      if (on && nav.scrollWidth > nav.clientWidth){
+        var target = a.offsetLeft - (nav.clientWidth/2) + (a.offsetWidth/2);
+        nav.scrollLeft = Math.max(0, target);
+      }
+    });
+  }
+
+  var current = 0;
+  function onScroll(){
+    var y = window.scrollY + (window.innerHeight * 0.32);
+    var idx = 0;
+    for (var i = 0; i < secs.length; i++){
+      if (secs[i].offsetTop <= y) idx = i + 1;
+    }
+    if (idx !== current){ current = idx; setActive(idx); }
+    var max = document.body.scrollHeight - window.innerHeight;
+    var pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 0;
+    document.getElementById('slPct').textContent = Math.min(100, Math.max(0, pct)) + '%';
+  }
+
+  var ticking = false;
+  window.addEventListener('scroll', function(){
+    if (!ticking){
+      ticking = true;
+      window.requestAnimationFrame(function(){ onScroll(); ticking = false; });
+    }
+  }, {passive:true});
+  window.addEventListener('resize', onScroll, {passive:true});
+  setActive(0);
+  onScroll();
+})();
+</script>
+
+</body>
+</html>
