@@ -155,7 +155,7 @@ sequenceDiagram
     H->>L: "add a guest-checkout branch"
     Note over L: reads cached YAML,<br/>emits ONLY new/changed entities
     L->>K: JSON partial — screen S2b_guest,<br/>transitions T19 (new), T3 (replaced)
-    Note over K: upsert by id —<br/>S2b_guest added, T3 replaced,<br/>T19 added; everything else untouched
+    Note over K: upsert by id —<br/>S2b_guest added, T3 replaced,<br/>T19 added, all else untouched
     K->>F: merged YAML + regenerated diagram
     K-->>H: 3-line YAML diff to review
 ```
