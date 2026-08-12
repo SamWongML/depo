@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dispatch — Autonomous ticket execution with pi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300..600;1,8..60,300..600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E3E5DF; --paper2:#EDEEE9; --paper3:#D7DAD3;
+  --ink:#16211F; --ink2:#3E4C4B; --muted:#6C7876;
+  --rule:#C2C7BF; --rule2:#AEB4AB;
+  --prussian:#1D3B54; --amber:#B8810F; --verdigris:#2C6B5B; --oxide:#983924;
+  --void:#111A19; --void2:#1B2726;
+  --disp:"Familjen Grotesk",system-ui,sans-serif;
+  --serif:"Source Serif 4",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --wide:1120px; --prose:70ch;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--serif); font-size:17px; line-height:1.62;
+  font-optical-sizing:auto;
+}
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+  background-image:linear-gradient(var(--rule) 1px,transparent 1px),linear-gradient(90deg,var(--rule) 1px,transparent 1px);
+  background-size:34px 34px; -webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 0%,transparent 72%);
+  mask-image:radial-gradient(ellipse at 50% 0%,#000 0%,transparent 72%);
+}
+.shell{position:relative; z-index:1; max-width:var(--wide); margin:0 auto; padding:0 24px 120px}
+.prose{max-width:var(--prose)}
+
+/* ---- type ---- */
+h1,h2,h3,h4{font-family:var(--disp); font-weight:700; letter-spacing:-.018em; line-height:1.06; margin:0}
+h2{font-size:clamp(28px,4.2vw,44px); margin:0 0 14px}
+h3{font-size:clamp(20px,2.4vw,25px); letter-spacing:-.012em; margin:38px 0 10px}
+h4{font-family:var(--mono); font-size:12px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--ink2); margin:26px 0 8px}
+p{margin:0 0 17px}
+a{color:var(--prussian); text-underline-offset:3px; text-decoration-thickness:1px}
+strong{font-weight:600}
+em{font-style:italic}
+code{font-family:var(--mono); font-size:.845em; background:var(--paper3); padding:.1em .34em; border-radius:2px; word-break:break-word}
+.lede{font-size:clamp(18px,2.1vw,21px); line-height:1.5; color:var(--ink2)}
+
+/* ---- masthead ---- */
+.mast{padding:70px 0 34px; border-bottom:2px solid var(--ink)}
+.eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); display:flex; gap:14px; flex-wrap:wrap; align-items:center}
+.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--amber);display:inline-block}
+.title{font-family:var(--disp); font-weight:700; font-size:clamp(46px,9.2vw,104px); line-height:.9; letter-spacing:-.04em; margin:20px 0 0}
+.title .thin{font-weight:400; color:var(--ink2)}
+.sub{margin:20px 0 0; max-width:60ch; font-size:clamp(17px,2vw,20px); line-height:1.48; color:var(--ink2)}
+.meta{display:flex; flex-wrap:wrap; gap:0; margin:34px 0 0; border-top:1px solid var(--rule2)}
+.meta div{flex:1 1 170px; padding:12px 16px 12px 0; border-right:1px solid var(--rule2); font-family:var(--mono); font-size:11.5px; line-height:1.5; color:var(--muted); padding-left:0}
+.meta div:first-child{padding-left:0}
+.meta div:last-child{border-right:0}
+.meta b{display:block; color:var(--ink); font-weight:600; letter-spacing:.02em}
+
+/* ---- section rail ---- */
+section{padding:64px 0 0; scroll-margin-top:20px}
+.rail{display:grid; grid-template-columns:88px 1fr; gap:28px; align-items:start}
+.rail-tag{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); padding-top:12px; border-top:2px solid var(--ink); position:sticky; top:18px}
+.rail-body{min-width:0; border-top:2px solid var(--ink); padding-top:10px}
+
+/* ---- figures ---- */
+figure{margin:34px 0 34px; background:var(--paper2); border:1px solid var(--rule2); border-radius:3px; overflow:hidden}
+figure.bleed{margin-left:calc(-88px - 28px)}
+figure svg{display:block; width:100%; height:auto; background:var(--paper2)}
+figcaption{font-family:var(--mono); font-size:11.5px; line-height:1.55; color:var(--ink2); padding:11px 16px; border-top:1px solid var(--rule2); background:var(--paper3); letter-spacing:.01em}
+figcaption b{font-weight:600; color:var(--ink); letter-spacing:.06em; text-transform:uppercase; font-size:10.5px}
+
+/* svg shared */
+.s-lbl{font-family:"IBM Plex Mono",monospace; font-size:11px; fill:#6C7876; letter-spacing:.1em; text-transform:uppercase}
+.s-txt{font-family:"IBM Plex Mono",monospace; font-size:12px; fill:#16211F}
+.s-sm{font-family:"IBM Plex Mono",monospace; font-size:10.5px; fill:#6C7876}
+.s-hd{font-family:"Familjen Grotesk",sans-serif; font-size:14px; font-weight:700; fill:#16211F}
+.s-box{fill:#EDEEE9; stroke:#3E4C4B; stroke-width:1.4}
+.s-box-d{fill:#D7DAD3; stroke:#AEB4AB; stroke-width:1.2}
+.s-line{stroke:#3E4C4B; stroke-width:1.6; fill:none}
+.s-amber{stroke:#B8810F} .s-verd{stroke:#2C6B5B} .s-oxide{stroke:#983924} .s-pruss{stroke:#1D3B54}
+.f-amber{fill:#B8810F} .f-verd{fill:#2C6B5B} .f-oxide{fill:#983924} .f-pruss{fill:#1D3B54} .f-muted{fill:#6C7876}
+.dash{stroke-dasharray:5 5}
+.flow{stroke-dasharray:8 10; animation:march 1.4s linear infinite}
+@keyframes march{to{stroke-dashoffset:-18}}
+@media (prefers-reduced-motion:reduce){.flow{animation:none}}
+
+/* ---- lamps / callouts ---- */
+.lamps{list-style:none; padding:0; margin:26px 0}
+.lamps li{display:grid; grid-template-columns:26px 1fr; gap:14px; padding:16px 0; border-top:1px solid var(--rule2)}
+.lamps li:last-child{border-bottom:1px solid var(--rule2)}
+.lamp{width:13px;height:13px;border-radius:50%;margin-top:9px;box-shadow:0 0 0 4px rgba(0,0,0,.05)}
+.lamp.a{background:var(--amber)} .lamp.o{background:var(--oxide)} .lamp.v{background:var(--verdigris)} .lamp.p{background:var(--prussian)}
+.lamps h4{margin:0 0 4px; font-family:var(--disp); font-size:17.5px; font-weight:700; letter-spacing:-.01em; text-transform:none; color:var(--ink)}
+.lamps p{margin:0; font-size:16px; color:var(--ink2)}
+
+.note{border-left:3px solid var(--oxide); background:var(--paper2); padding:16px 20px; margin:28px 0; font-size:16px}
+.note.ok{border-left-color:var(--verdigris)}
+.note.warn{border-left-color:var(--amber)}
+.note b{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; display:block; margin-bottom:6px; color:var(--ink2)}
+.note p:last-child{margin-bottom:0}
+
+/* ---- tables ---- */
+.tbl{width:100%; border-collapse:collapse; margin:26px 0; font-size:14.5px}
+.tbl th{font-family:var(--mono); font-size:10.5px; letter-spacing:.13em; text-transform:uppercase; text-align:left; color:var(--ink2); border-bottom:2px solid var(--ink); padding:0 12px 8px 0; vertical-align:bottom}
+.tbl td{padding:11px 12px 11px 0; border-bottom:1px solid var(--rule2); vertical-align:top; line-height:1.45}
+.tbl td:first-child{font-family:var(--mono); font-size:12.5px; color:var(--ink)}
+.tbl tr:hover td{background:rgba(29,59,84,.035)}
+
+/* ---- code ---- */
+pre{background:var(--void); color:#DCE3E1; font-family:var(--mono); font-size:12.6px; line-height:1.62;
+    padding:18px 20px; border-radius:3px; overflow-x:auto; margin:22px 0; border:1px solid var(--void2)}
+pre code{background:none; padding:0; font-size:inherit; color:inherit}
+.c-c{color:#7E8F8B} .c-k{color:#E0AE4A} .c-s{color:#8FBFA8} .c-v{color:#8FB4D6} .c-d{color:#C98A76}
+.filebar{font-family:var(--mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink2);
+  background:var(--paper3); border:1px solid var(--rule2); border-bottom:0; padding:8px 14px; margin:26px 0 -22px; border-radius:3px 3px 0 0; display:flex; justify-content:space-between; gap:12px}
+.filebar+pre{border-radius:0 0 3px 3px; margin-top:22px}
+
+/* ---- steps ---- */
+.steps{counter-reset:st; list-style:none; padding:0; margin:28px 0}
+.steps>li{counter-increment:st; display:grid; grid-template-columns:52px 1fr; gap:18px; padding:20px 0; border-top:1px solid var(--rule2)}
+.steps>li::before{content:counter(st,decimal-leading-zero); font-family:var(--mono); font-size:19px; font-weight:600; color:var(--amber); letter-spacing:-.02em}
+.steps h4{margin:0 0 5px; font-family:var(--disp); font-size:17.5px; font-weight:700; text-transform:none; letter-spacing:-.01em; color:var(--ink)}
+.steps p{margin:0 0 8px; font-size:16px; color:var(--ink2)}
+.steps pre{margin:10px 0 0}
+
+ul.plain{padding-left:20px; margin:18px 0}
+ul.plain li{margin:0 0 9px}
+
+/* ---- footer ---- */
+.foot{margin-top:90px; border-top:2px solid var(--ink); padding-top:22px; font-family:var(--mono); font-size:11.5px; color:var(--muted); display:flex; flex-wrap:wrap; gap:24px; justify-content:space-between}
+
+@media (max-width:820px){
+  body{font-size:16.5px}
+  .rail{grid-template-columns:1fr; gap:0}
+  .rail-tag{position:static; border-top:0; padding-top:0; margin-bottom:8px}
+  figure.bleed{margin-left:0}
+  .meta div{border-right:0; border-bottom:1px solid var(--rule2)}
+  .tbl{font-size:13px; table-layout:fixed}
+  .tbl th,.tbl td{word-break:break-word; hyphens:auto; padding-right:9px}
+  .tbl td:first-child{font-size:11.5px}
+  pre{font-size:11.4px; padding:14px 14px}
+}
+:focus-visible{outline:2.5px solid var(--prussian); outline-offset:3px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header class="mast">
+  <div class="eyebrow"><span class="dot"></span><span>Engineering report</span><span>·</span><span>AFK ticket execution</span><span>·</span><span>12 Aug 2026</span></div>
+  <h1 class="title">Dispatch<span class="thin">.</span></h1>
+  <p class="sub">Running Matt Pocock's <code>to-tickets</code> output to completion with pi coding agents — in parallel, unattended, and merged without a human at the keyboard.</p>
+  <div class="meta">
+    <div><b>pi 0.84.1</b>earendil-works/pi<br>commit 2a9b4eb, 11 Aug 2026</div>
+    <div><b>skills v1.1+</b>mattpocock/skills<br>main, read 12 Aug 2026</div>
+    <div><b>Method</b>Source-verified against<br>cloned repos, not recall</div>
+    <div><b>Deliverable</b>Architecture, 9 diagrams,<br>2 runnable scripts</div>
+  </div>
+</header>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">Verdict</div>
+  <div class="rail-body">
+    <h2>Yes — but the tickets are not the unit of autonomy.</h2>
+    <div class="prose">
+    <p class="lede">The <code>implement</code> phase can run fully AFK. What cannot run AFK is <em>pointing agents at tickets and walking away</em>, because the toolchain leaves three gaps that stall the loop within minutes. Each gap is documented by the tools' own authors. Each has a small, boring fix.</p>
+    <p>The working shape is a <strong>scheduler that owns all state</strong> and <strong>workers that own no state</strong>. Workers get a worktree, a ticket reference, and one job: leave a commit on a branch. Everything else — claiming, closing, unblocking, merging, escalating — belongs to a single coordinating process. Build that and the pipeline runs unattended; skip it and you get a board full of implemented-but-open tickets and a frontier that never advances.</p>
+    </div>
+
+    <ul class="lamps">
+      <li><span class="lamp o"></span><div>
+        <h4><code>/implement</code> has no completion step</h4>
+        <p>It ends at the commit. It never closes the ticket and never ticks the acceptance criteria — confirmed on GitHub Issues and on the local markdown tracker, so this is not a tracker-integration bug. Since <code>to-tickets</code> defines the frontier as <em>tickets whose blockers are closed</em>, nothing closes, so nothing unblocks. The swarm implements wave one and then idles forever.</p>
+      </div></li>
+      <li><span class="lamp o"></span><div>
+        <h4>Parallel <code>/implement</code> in one checkout corrupts git</h4>
+        <p>The skills' own docs cite a field report: a <code>git commit --amend</code> in one session landing on another session's commit, a stash vanishing from <code>refs/stash</code>, commits on the wrong branch — one afternoon, three issues. Sessions share one working directory, one index, one HEAD. Worktrees fix two of those three; <code>refs/stash</code> is shared <em>across</em> worktrees, so the AFK prompt must also forbid <code>git stash</code>.</p>
+      </div></li>
+      <li><span class="lamp a"></span><div>
+        <h4>The in-run code review usually reviews nothing</h4>
+        <p><code>/implement</code> runs <code>/code-review</code> <em>before</em> committing. <code>code-review</code> diffs <code>&lt;fixed-point&gt;...HEAD</code>, which excludes staged and working-tree changes. Unless an interim commit exists, that diff is empty. Run review as a separate pass, after the commit, against the branch point.</p>
+      </div></li>
+      <li><span class="lamp a"></span><div>
+        <h4>Bonus trap: the spec issue is labelled <code>ready-for-agent</code> too</h4>
+        <p><code>to-spec</code> applies the label to the parent spec, which is an input designation rather than a work order. A poller cannot see that distinction and will try to build the entire feature in one run. This is the single most-reported rough edge on the skill. Strip the label after <code>to-tickets</code>, or exclude the spec number in the frontier query.</p>
+      </div></li>
+    </ul>
+    </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">Fig. 01</div>
+  <div class="rail-body">
+    <h2>The shape of the machine</h2>
+    <div class="prose"><p>Read it left to right. Tickets sit on the tracker under blocking edges. The <strong>frontier</strong> is the gate: open, unblocked, unclaimed. Past the gate, work fans onto isolated tracks — one git worktree each, no shared index. It all funnels back through one interlock, because merging is the one operation that must never happen twice at once.</p></div>
+
+<figure class="bleed">
+<svg viewBox="0 0 1120 462" role="img" aria-label="Dispatch board: tickets flow through a frontier gate onto three parallel worktree tracks, then converge through a single-track interlock onto the main line.">
+  <text class="s-lbl" x="24" y="30">Tracker</text>
+  <text class="s-lbl" x="238" y="30">Frontier</text>
+  <text class="s-lbl" x="360" y="30">Isolated tracks · one worktree each</text>
+  <text class="s-lbl" x="836" y="30">Interlock</text>
+  <text class="s-lbl" x="978" y="30">Main</text>
+  <line x1="24" y1="40" x2="1096" y2="40" stroke="#AEB4AB" stroke-width="1"/>
+
+  <!-- tracker chips -->
+  <rect class="s-box" x="24" y="60" width="176" height="34" rx="2"/><circle class="f-verd" cx="42" cy="77" r="5"/><text class="s-txt" x="56" y="81">#41 schema</text><text class="s-sm" x="150" y="81">done</text>
+  <rect class="s-box" x="24" y="100" width="176" height="34" rx="2"/><circle class="f-amber" cx="42" cy="117" r="5"/><text class="s-txt" x="56" y="121">#42 upload</text><text class="s-sm" x="146" y="121">ready</text>
+  <rect class="s-box" x="24" y="140" width="176" height="34" rx="2"/><circle class="f-amber" cx="42" cy="157" r="5"/><text class="s-txt" x="56" y="161">#43 resize</text><text class="s-sm" x="146" y="161">ready</text>
+  <rect class="s-box" x="24" y="180" width="176" height="34" rx="2"/><circle class="f-amber" cx="42" cy="197" r="5"/><text class="s-txt" x="56" y="201">#47 purge</text><text class="s-sm" x="146" y="201">ready</text>
+
+  <rect class="s-box-d" x="24" y="220" width="176" height="46" rx="2"/><circle class="f-muted" cx="42" cy="237" r="5"/>
+  <text class="s-txt" x="56" y="241" fill="#6C7876">#48 avatar UI</text>
+  <text class="s-sm" x="42" y="258">blocked by #42, #43</text>
+
+  <rect class="s-box-d" x="24" y="272" width="176" height="46" rx="2"/><circle class="f-muted" cx="42" cy="289" r="5"/>
+  <text class="s-txt" x="56" y="293" fill="#6C7876">#49 CDN flush</text>
+  <text class="s-sm" x="42" y="310">blocked by #47</text>
+
+  <rect x="24" y="324" width="176" height="46" rx="2" fill="none" stroke="#983924" stroke-width="1.4" stroke-dasharray="4 4"/>
+  <circle class="f-oxide" cx="42" cy="341" r="5"/>
+  <text class="s-txt" x="56" y="345" fill="#983924">#40 SPEC</text>
+  <text class="s-sm" x="42" y="362" fill="#983924">excluded — not a ticket</text>
+
+  <!-- frontier gate -->
+  <line x1="252" y1="64" x2="252" y2="400" stroke="#1D3B54" stroke-width="2" stroke-dasharray="6 6"/>
+  <text class="s-sm" x="260" y="58" fill="#1D3B54">open ∧ unblocked ∧ unclaimed</text>
+
+  <path class="s-line s-amber flow" d="M200 117 H252 V150 H300"/>
+  <path class="s-line s-amber flow" d="M200 157 H252 V240 H300"/>
+  <path class="s-line s-amber flow" d="M200 197 H252 V330 H300"/>
+
+  <!-- worker tracks -->
+  <rect class="s-box" x="300" y="122" width="300" height="56" rx="2"/>
+  <rect x="300" y="122" width="5" height="56" fill="#B8810F"/>
+  <text class="s-hd" x="318" y="145">worktree/42</text>
+  <text class="s-sm" x="318" y="164">branch ticket/42 · pi -p /skill:implement</text>
+  <rect class="s-box" x="300" y="212" width="300" height="56" rx="2"/>
+  <rect x="300" y="212" width="5" height="56" fill="#B8810F"/>
+  <text class="s-hd" x="318" y="235">worktree/43</text>
+  <text class="s-sm" x="318" y="254">branch ticket/43 · pi -p /skill:implement</text>
+  <rect class="s-box" x="300" y="302" width="300" height="56" rx="2"/>
+  <rect x="300" y="302" width="5" height="56" fill="#B8810F"/>
+  <text class="s-hd" x="318" y="325">worktree/47</text>
+  <text class="s-sm" x="318" y="344">branch ticket/47 · pi -p /skill:implement</text>
+
+  <!-- review stage -->
+  <rect class="s-box" x="628" y="130" width="120" height="40" rx="2"/><text class="s-txt" x="644" y="155">review</text><circle class="f-verd" cx="730" cy="150" r="5"/>
+  <rect class="s-box" x="628" y="220" width="120" height="40" rx="2"/><text class="s-txt" x="644" y="245">review</text><circle class="f-verd" cx="730" cy="240" r="5"/>
+  <rect class="s-box" x="628" y="310" width="120" height="40" rx="2"/><text class="s-txt" x="644" y="335">review</text><circle class="f-oxide" cx="730" cy="330" r="5"/>
+  <path class="s-line flow" d="M600 150 H628"/>
+  <path class="s-line flow" d="M600 240 H628"/>
+  <path class="s-line flow" d="M600 330 H628"/>
+
+  <!-- converge -->
+  <path class="s-line s-verd" d="M748 150 H800 Q820 150 820 176 V214"/>
+  <path class="s-line s-verd" d="M748 240 H820"/>
+  <path class="s-line s-oxide dash" d="M748 330 H800 Q820 330 820 304 V266"/>
+
+  <!-- interlock -->
+  <g transform="translate(866,240)">
+    <polygon points="0,-34 46,0 0,34 -46,0" fill="#EDEEE9" stroke="#1D3B54" stroke-width="2"/>
+    <text class="s-txt" x="0" y="-4" text-anchor="middle" fill="#1D3B54">flock</text>
+    <text class="s-sm" x="0" y="12" text-anchor="middle" fill="#1D3B54">N = 1</text>
+  </g>
+
+  <!-- main line -->
+  <path class="s-line s-verd" d="M912 240 H1090" stroke-width="2.6"/>
+  <circle class="f-verd" cx="944" cy="240" r="6"/>
+  <circle class="f-verd" cx="984" cy="240" r="6"/>
+  <circle class="f-verd" cx="1024" cy="240" r="6"/>
+  <circle cx="1064" cy="240" r="6" fill="#EDEEE9" stroke="#2C6B5B" stroke-width="2"/>
+  <text class="s-sm" x="922" y="272">rebase → gate → fast-forward</text>
+  <text class="s-lbl" x="922" y="212" fill="#2C6B5B">integration</text>
+
+  <!-- escalate -->
+  <path class="s-line s-oxide dash" d="M866 206 V120 H1040"/>
+  <polygon points="1040,114 1052,120 1040,126" fill="#983924"/>
+  <text class="s-sm" x="880" y="112" fill="#983924">retry ×2, then ready-for-human</text>
+
+  <!-- close-the-loop -->
+  <path class="s-line s-pruss dash" d="M1064 254 V444 H252 V414"/>
+  <polygon points="246,414 258,414 252,402" fill="#1D3B54"/>
+  <text class="s-sm" x="420" y="438" fill="#1D3B54">scheduler closes ticket → blocked children join the frontier</text>
+</svg>
+<figcaption><b>Fig. 01 — Dispatch board.</b> Amber = in flight. Verdigris = verified green. Oxide = stopped, escalated. The dashed return path at the bottom is the part the toolchain does not ship: without it the frontier never advances and the board deadlocks after the first wave.</figcaption>
+</figure>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">01 · Substrate</div>
+  <div class="rail-body">
+    <h2>What pi actually gives you</h2>
+    <div class="prose">
+    <p>Every row below was checked against the cloned source or the shipped docs, not recalled. The column that matters is the last one — where the claim comes from — because pi moves fast and half the blog posts about it describe a version that no longer exists.</p>
+    </div>
+
+    <table class="tbl">
+      <thead><tr><th style="width:26%">Capability</th><th style="width:41%">What it means for an AFK runner</th><th style="width:33%">Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>pi -p "/skill:name"</td><td>Skills expand in headless print mode. This is the whole basis of the design — you can invoke a Matt Pocock skill from a shell script.</td><td><code>agent-session.ts:1117</code> defaults <code>expandPromptTemplates</code> to true; <code>print-mode.ts:132</code> does not override it</td></tr>
+        <tr><td>--approve / -a</td><td><strong>Mandatory.</strong> Headless modes never prompt for trust, and <code>defaultProjectTrust</code> is <code>ask</code>, which headless reads as <em>ignore project resources</em>. Skills in <code>.pi/skills/</code> and <code>.agents/skills/</code> are trust-gated, so without this flag they silently do not load.</td><td>README "Project Trust"; each worktree is a fresh path with no saved decision</td></tr>
+        <tr><td>--mode json</td><td>Line-delimited event stream: <code>tool_execution_start</code>, <code>turn_end</code>, <code>agent_end</code>. Your progress telemetry and stall detector read this.</td><td><code>docs/json.md</code>; deltas only since 0.84.0</td></tr>
+        <tr><td>--tools / --exclude-tools</td><td>Read-only reviewer via <code>--tools read,grep,find,ls</code>. Kill interactive escape hatches with <code>--exclude-tools ask_question</code>.</td><td>README CLI reference; built-ins are read, bash, edit, write, grep, find, ls</td></tr>
+        <tr><td>Auto-compaction</td><td>On by default. Long implement runs survive context overflow instead of dying — it recovers and retries. Lossy, but the full history stays in the JSONL.</td><td><code>compaction.enabled: true</code>, <code>keepRecentTokens: 20000</code></td></tr>
+        <tr><td>Agent retry</td><td><code>retry.maxRetries: 3</code> with 2s/4s/8s backoff absorbs transient provider errors so your outer loop only sees real failures.</td><td><code>docs/settings.md</code> Retry</td></tr>
+        <tr><td>Session env vars</td><td>Bash commands the model runs receive <code>PI_SESSION_ID</code>, <code>PI_SESSION_FILE</code>, <code>PI_MODEL</code>. Useful for stamping commits with provenance.</td><td>README environment variables</td></tr>
+        <tr><td>PI_CACHE_RETENTION=long</td><td>Extends prompt cache to 1h (Anthropic) / 24h (OpenAI). Across hundreds of runs sharing one repo preamble this is a real cost line, not a rounding error.</td><td>README environment variables</td></tr>
+        <tr><td>Sequential prompts</td><td><code>pi -p "a" "b"</code> runs both in one session. Implement-then-review in a single process if you want it — though §03 argues you shouldn't.</td><td><code>print-mode.ts:136</code> loops <code>session.prompt</code></td></tr>
+        <tr><td>Skills install natively</td><td><code>npx skills add mattpocock/skills -a pi</code> targets <code>.pi/skills/</code> (project) or <code>~/.pi/agent/skills/</code> (global). Pi is a first-class row in the installer's agent table.</td><td>vercel-labs/skills supported-agents table</td></tr>
+        <tr><td>No --max-turns</td><td>There is no built-in turn or wall-clock cap. Wrap every worker in <code>timeout</code> or a runaway ticket burns your budget unattended.</td><td>Absent from CLI reference</td></tr>
+        <tr><td>No permissions, no sandbox</td><td>pi runs with the privileges of whoever launched it. For an unattended fleet this is the security posture you inherit — containerise if that matters.</td><td>Root README "Permissions &amp; Containerization"</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note warn"><b>The flag that costs people a day</b>
+      <p>A worker launched without <code>-a</code> in a fresh worktree runs happily, produces plausible output, and never loads <code>implement</code> at all — it just free-forms the ticket. There is no error. Either pass <code>-a</code> on every worker invocation, or install the skills globally to <code>~/.pi/agent/skills/</code> where trust does not apply. The scripts in §09 do both.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">02 · Contract</div>
+  <div class="rail-body">
+    <h2>Where the skills stop</h2>
+    <div class="prose">
+    <p>The main flow is a genuine pipeline — <code>grill-with-docs</code> → <code>to-spec</code> → <code>to-tickets</code> → <code>implement</code> → <code>code-review</code> — and its author is explicit that the order is the point. Steps one to three belong in <em>one unbroken context window</em>, because the grilling, the spec and the ticket split all build on the same thinking. Then each <code>implement</code> starts fresh.</p>
+    <p>What matters for automation is the seam after <code>to-tickets</code>. The skill produces an artifact and stops. Its own documentation says so plainly: there is no auto-dispatch mode, dispatch is manual, and <em>"running it — one session at a time, or a fleet — is your job, not the skill's."</em> That is the cliff your orchestrator is built on.</p>
+    </div>
+
+<figure class="bleed">
+<svg viewBox="0 0 1120 300" role="img" aria-label="The Matt Pocock main flow, showing the human-in-the-loop phases, the single unbroken context window, and the hand-off cliff after to-tickets where automation must begin.">
+  <text class="s-lbl" x="24" y="26">Main flow · one unbroken context window ────────────────────────┤</text>
+  <text class="s-lbl" x="700" y="26">├──────── fresh context per ticket</text>
+
+  <!-- HITL band -->
+  <rect x="24" y="44" width="640" height="108" fill="#D7DAD3" stroke="#AEB4AB" stroke-width="1" rx="3"/>
+  <text class="s-lbl" x="38" y="66" fill="#983924">Human in the loop — cannot be automated</text>
+
+  <g>
+    <rect class="s-box" x="40" y="78" width="176" height="58" rx="2"/>
+    <text class="s-hd" x="56" y="102">grill-with-docs</text>
+    <text class="s-sm" x="56" y="121">interview, one Q at a time</text>
+
+    <rect class="s-box" x="248" y="78" width="176" height="58" rx="2"/>
+    <text class="s-hd" x="264" y="102">to-spec</text>
+    <text class="s-sm" x="264" y="121">synthesis, no interview</text>
+
+    <rect class="s-box" x="456" y="78" width="176" height="58" rx="2"/>
+    <text class="s-hd" x="472" y="102">to-tickets</text>
+    <text class="s-sm" x="472" y="121">vertical slices + edges</text>
+  </g>
+  <path class="s-line" d="M216 107 H248"/><polygon points="248,102 258,107 248,112" fill="#3E4C4B"/>
+  <path class="s-line" d="M424 107 H456"/><polygon points="456,102 466,107 456,112" fill="#3E4C4B"/>
+
+  <!-- the cliff -->
+  <line x1="688" y1="40" x2="688" y2="270" stroke="#983924" stroke-width="2.5"/>
+  <text class="s-lbl" x="698" y="56" fill="#983924">The cliff</text>
+  <text class="s-sm" x="698" y="74" fill="#983924">"there is no auto-dispatch mode"</text>
+  <path class="s-line s-oxide" d="M632 107 H676"/><polygon points="676,102 686,107 676,112" fill="#983924"/>
+
+  <!-- AFK band -->
+  <rect x="700" y="90" width="396" height="120" fill="#EDEEE9" stroke="#2C6B5B" stroke-width="1.4" rx="3"/>
+  <text class="s-lbl" x="714" y="112" fill="#2C6B5B">AFK — safe to automate, once wrapped</text>
+  <rect class="s-box" x="716" y="124" width="168" height="52" rx="2"/>
+  <text class="s-hd" x="732" y="146">implement</text>
+  <text class="s-sm" x="732" y="164">drives tdd at seams</text>
+  <rect class="s-box" x="908" y="124" width="172" height="52" rx="2"/>
+  <text class="s-hd" x="924" y="146">code-review</text>
+  <text class="s-sm" x="924" y="164">standards + spec axes</text>
+  <path class="s-line" d="M884 150 H908"/><polygon points="908,145 918,150 908,155" fill="#3E4C4B"/>
+
+  <!-- what you must supply -->
+  <rect x="700" y="226" width="396" height="52" rx="3" fill="#EDEEE9" stroke="#1D3B54" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text class="s-txt" x="716" y="248" fill="#1D3B54">You supply: claim · close · unblock · merge · escalate</text>
+  <text class="s-sm" x="716" y="266" fill="#1D3B54">none of these exist in any skill</text>
+  <path class="s-line s-pruss dash" d="M898 210 V226"/>
+
+  <!-- upstream prerequisites -->
+  <text class="s-lbl" x="24" y="182" fill="#983924">Set here or the AFK run degrades silently</text>
+  <rect x="24" y="194" width="640" height="84" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.4"/>
+  <text class="s-txt" x="40" y="218">· Name the TDD seams in the spec — tdd refuses unconfirmed seams,</text>
+  <text class="s-txt" x="52" y="236">and nothing inside implement agrees them</text>
+  <text class="s-txt" x="40" y="258">· Verify each acceptance criterion actually fails at the base commit</text>
+</svg>
+<figcaption><b>Fig. 02 — The hand-off cliff.</b> The first three phases are irreducibly human. Everything to the right of the red line is automatable, but only after you supply the five verbs in the dashed box — none of which any skill implements.</figcaption>
+</figure>
+
+    <div class="prose">
+    <h3>Two upstream conditions that decide whether AFK works</h3>
+    <p>These are not orchestration concerns, but they are where the failure risk actually concentrates. An AFK fleet amplifies whatever quality the tickets already had.</p>
+    </div>
+    <ul class="plain">
+      <li><strong>Seams must be named in the spec.</strong> <code>tdd</code> refuses to write a test at an unconfirmed seam, and nothing inside <code>implement</code> agrees them. If the agreement happens nowhere, the precondition never fires and the run quietly becomes "just write the code" — with tests that pass and mean nothing.</li>
+      <li><strong>Acceptance criteria must be falsifiable at the base commit.</strong> Three failure shapes recur: a criterion already true before any work, a criterion only another ticket can satisfy, and one that restates the request rather than deriving from the artifact. For each criterion, name the observation that would show it false, and confirm it fails at the commit the worker starts from. A vertical slice is red at base by construction — a horizontal one often isn't.</li>
+      <li><strong>Pass full ticket references.</strong> <code>/implement #2</code> resolves <code>#2</code> against whatever numbered list the agent can see — a todo file, a checklist, another work list. The resolution is confident rather than fail-closed, so the mistake surfaces only after it has started building the wrong thing. Use <code>owner/repo#42</code> and make the worker echo the title back before it begins.</li>
+      <li><strong>Budget 100–150k tokens per ticket.</strong> Exploration, a red-green loop per seam, a full suite, a review. A non-trivial ticket exceeding 100k tokens is normal. If one keeps blowing out, the lever is upstream — split the ticket, don't raise the effort level.</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">03 · Breaks</div>
+  <div class="rail-body">
+    <h2>Three ways the naive loop dies</h2>
+    <div class="prose"><p>Each panel below is a real, reported failure mode with a documented cause. They are worth drawing because they look like flaky agents when you hit them, and they are not — they are deterministic consequences of how the tools are built.</p></div>
+
+<figure class="bleed">
+<svg viewBox="0 0 1120 340" role="img" aria-label="Three failure panels: frozen frontier from tickets that never close, git corruption from a shared checkout, and an empty review diff.">
+  <!-- panel A -->
+  <rect x="20" y="20" width="348" height="300" rx="3" fill="#EDEEE9" stroke="#983924" stroke-width="1.6"/>
+  <text class="s-lbl" x="38" y="46" fill="#983924">Break A</text>
+  <text class="s-hd" x="38" y="70">The frozen frontier</text>
+
+  <rect class="s-box" x="38" y="88" width="120" height="34" rx="2"/><text class="s-txt" x="52" y="110">#42 ready</text>
+  <path class="s-line flow" d="M98 122 V148"/>
+  <rect class="s-box" x="38" y="148" width="120" height="34" rx="2"/><text class="s-txt" x="52" y="170">implement</text>
+  <path class="s-line flow" d="M98 182 V208"/>
+  <rect class="s-box" x="38" y="208" width="120" height="34" rx="2"/><text class="s-txt" x="52" y="230">commit ✓</text>
+  <path class="s-line s-oxide dash" d="M98 242 V268"/>
+  <rect x="38" y="268" width="120" height="34" rx="2" fill="#EDEEE9" stroke="#983924" stroke-width="1.6" stroke-dasharray="4 4"/>
+  <text class="s-txt" x="52" y="290" fill="#983924">close ✗</text>
+
+  <text class="s-sm" x="180" y="106">implement has no</text>
+  <text class="s-sm" x="180" y="122">completion step. It</text>
+  <text class="s-sm" x="180" y="138">ends at the commit.</text>
+  <text class="s-sm" x="180" y="170" fill="#983924">Frontier = blockers</text>
+  <text class="s-sm" x="180" y="186" fill="#983924">closed. Nothing closes,</text>
+  <text class="s-sm" x="180" y="202" fill="#983924">so nothing unblocks.</text>
+  <rect x="180" y="222" width="168" height="80" rx="2" fill="#D7DAD3" stroke="#AEB4AB"/>
+  <text class="s-sm" x="192" y="244">#48 blocked by #42</text>
+  <text class="s-sm" x="192" y="262">└ waits forever</text>
+  <text class="s-sm" x="192" y="286" fill="#983924">swarm idles at wave 1</text>
+
+  <!-- panel B -->
+  <rect x="386" y="20" width="348" height="300" rx="3" fill="#EDEEE9" stroke="#983924" stroke-width="1.6"/>
+  <text class="s-lbl" x="404" y="46" fill="#983924">Break B</text>
+  <text class="s-hd" x="404" y="70">One checkout, three agents</text>
+
+  <rect class="s-box" x="404" y="88" width="94" height="40" rx="2"/><text class="s-txt" x="418" y="113">sess A</text>
+  <rect class="s-box" x="512" y="88" width="94" height="40" rx="2"/><text class="s-txt" x="526" y="113">sess B</text>
+  <rect class="s-box" x="620" y="88" width="94" height="40" rx="2"/><text class="s-txt" x="634" y="113">sess C</text>
+
+  <path class="s-line s-oxide" d="M451 128 V158"/>
+  <path class="s-line s-oxide" d="M559 128 V158"/>
+  <path class="s-line s-oxide" d="M667 128 V158"/>
+
+  <rect x="404" y="158" width="310" height="52" rx="2" fill="#D7DAD3" stroke="#983924" stroke-width="1.6"/>
+  <text class="s-txt" x="418" y="180" fill="#983924">one working dir · one index · one HEAD</text>
+  <text class="s-sm" x="418" y="200" fill="#983924">shared refs/stash — even across worktrees</text>
+
+  <text class="s-sm" x="404" y="238">Reported in a single afternoon:</text>
+  <text class="s-sm" x="404" y="258">· commit --amend landed on another session's commit</text>
+  <text class="s-sm" x="404" y="276">· a stash vanished from refs/stash</text>
+  <text class="s-sm" x="404" y="294">· commits landed on the wrong branch</text>
+  <text class="s-sm" x="404" y="312" fill="#983924">Worktrees fix 2 of 3. Ban git stash for the third.</text>
+
+  <!-- panel C -->
+  <rect x="752" y="20" width="348" height="300" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/>
+  <text class="s-lbl" x="770" y="46" fill="#B8810F">Break C</text>
+  <text class="s-hd" x="770" y="70">The empty review</text>
+
+  <text class="s-sm" x="770" y="98">implement's internal order:</text>
+  <rect class="s-box" x="770" y="110" width="150" height="32" rx="2"/><text class="s-txt" x="784" y="131">write code</text>
+  <path class="s-line" d="M845 142 V162"/>
+  <rect x="770" y="162" width="150" height="32" rx="2" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/><text class="s-txt" x="784" y="183" fill="#B8810F">code-review</text>
+  <path class="s-line" d="M845 194 V214"/>
+  <rect class="s-box" x="770" y="214" width="150" height="32" rx="2"/><text class="s-txt" x="784" y="235">commit</text>
+
+  <text class="s-sm" x="936" y="132">reviews</text>
+  <text class="s-sm" x="936" y="150">&lt;point&gt;...HEAD</text>
+  <text class="s-sm" x="936" y="176" fill="#B8810F">excludes staged +</text>
+  <text class="s-sm" x="936" y="192" fill="#B8810F">working tree</text>
+  <text class="s-sm" x="936" y="218" fill="#B8810F">→ diff is empty</text>
+  <text class="s-sm" x="936" y="236" fill="#B8810F">→ reviews nothing</text>
+
+  <rect x="770" y="264" width="314" height="42" rx="2" fill="#D7DAD3" stroke="#AEB4AB"/>
+  <text class="s-sm" x="784" y="284">Fix: a separate pass, after the commit.</text>
+  <text class="s-sm" x="784" y="300">An agent reviewing its own work approves it.</text>
+</svg>
+<figcaption><b>Fig. 03 — The three breaks.</b> A and B are hard stops. C is quieter and more corrosive: the pipeline reports a passing review that examined an empty diff, so quality signal is fabricated rather than absent.</figcaption>
+</figure>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">04 · Design</div>
+  <div class="rail-body">
+    <h2>Scheduler owns state. Workers own nothing.</h2>
+    <div class="prose">
+    <p>The single design decision that makes this tractable: <strong>workers never touch the tracker</strong>. They do not claim, do not comment, do not close. A worker receives a worktree path and a ticket body, and its contract is one line — leave a commit on this branch, or exit non-zero. Every state transition happens in one process that runs alone.</p>
+    <p>This collapses the hard distributed-systems problem into a local one. There is no claim race because there is one claimer. There is no lost update because there is one writer. You can add real distributed claiming later (§06) but you almost certainly won't need it.</p>
+    </div>
+
+<figure class="bleed">
+<svg viewBox="0 0 1120 560" role="img" aria-label="Full system architecture: tracker adapter, scheduler with frontier query and claim ledger, worker pool in worktrees, integrator with merge queue and gate, and the escalation path.">
+  <!-- lanes -->
+  <text class="s-lbl" x="24" y="24">Source of truth</text>
+  <text class="s-lbl" x="300" y="24">Control plane · single process</text>
+  <text class="s-lbl" x="640" y="24">Data plane · N parallel</text>
+  <text class="s-lbl" x="944" y="24">Serialized</text>
+  <line x1="24" y1="34" x2="1096" y2="34" stroke="#AEB4AB"/>
+
+  <!-- tracker -->
+  <rect x="24" y="52" width="240" height="188" rx="3" fill="#EDEEE9" stroke="#1D3B54" stroke-width="1.6"/>
+  <text class="s-hd" x="40" y="78">Tracker</text>
+  <text class="s-sm" x="40" y="98">GitHub Issues · or .scratch/</text>
+  <line x1="40" y1="110" x2="248" y2="110" stroke="#AEB4AB"/>
+  <text class="s-txt" x="40" y="132">issue body + criteria</text>
+  <text class="s-txt" x="40" y="154">native blocked_by edges</text>
+  <text class="s-txt" x="40" y="176">labels = state</text>
+  <text class="s-txt" x="40" y="198">assignee = claim marker</text>
+  <text class="s-sm" x="40" y="224" fill="#1D3B54">read by scheduler only</text>
+
+  <!-- tracker adapter -->
+  <rect x="24" y="262" width="240" height="96" rx="3" fill="#D7DAD3" stroke="#AEB4AB" stroke-width="1.2"/>
+  <text class="s-hd" x="40" y="288">Adapter</text>
+  <text class="s-sm" x="40" y="308">frontier() claim() close()</text>
+  <text class="s-sm" x="40" y="326">escalate() comment()</text>
+  <text class="s-sm" x="40" y="346" fill="#1D3B54">swap gh ↔ files here</text>
+
+  <!-- scheduler -->
+  <rect x="300" y="52" width="288" height="306" rx="3" fill="#EDEEE9" stroke="#1D3B54" stroke-width="2"/>
+  <text class="s-hd" x="318" y="78">Scheduler</text>
+  <text class="s-sm" x="318" y="97">one process · owns all writes</text>
+  <line x1="318" y1="108" x2="570" y2="108" stroke="#AEB4AB"/>
+
+  <rect class="s-box" x="318" y="120" width="252" height="46" rx="2"/>
+  <text class="s-txt" x="332" y="140">1 · frontier query</text>
+  <text class="s-sm" x="332" y="157">open ∧ unblocked ∧ unclaimed ∧ ¬spec</text>
+
+  <rect class="s-box" x="318" y="176" width="252" height="46" rx="2"/>
+  <text class="s-txt" x="332" y="196">2 · claim + label</text>
+  <text class="s-sm" x="332" y="213">assign @me, then verify the readback</text>
+
+  <rect class="s-box" x="318" y="232" width="252" height="46" rx="2"/>
+  <text class="s-txt" x="332" y="252">3 · spawn worker</text>
+  <text class="s-sm" x="332" y="269">worktree add, cap concurrency</text>
+
+  <rect class="s-box" x="318" y="286" width="252" height="64" rx="2"/>
+  <text class="s-txt" x="332" y="306">4 · reap + transition</text>
+  <text class="s-sm" x="332" y="323">close on merge, escalate when spent,</text>
+  <text class="s-sm" x="332" y="340">re-query the frontier every 20s</text>
+
+  <!-- loop arrow -->
+  <path class="s-line s-pruss" d="M584 314 H600 V96 H584"/>
+  <polygon points="584,90 584,102 574,96" fill="#1D3B54"/>
+  
+  <path class="s-line s-pruss" d="M264 146 H300"/><polygon points="300,141 310,146 300,151" fill="#1D3B54"/>
+  <path class="s-line s-pruss" d="M300 310 H264"/><polygon points="264,305 254,310 264,315" fill="#1D3B54"/>
+
+  <!-- workers -->
+  <g>
+    <rect x="640" y="52" width="272" height="88" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/>
+    <rect x="640" y="52" width="5" height="88" fill="#B8810F"/>
+    <text class="s-hd" x="658" y="76">worker · ticket/42</text>
+    <text class="s-sm" x="658" y="95">.wt/42 · own index, own HEAD</text>
+    <text class="s-sm" x="658" y="113">pi -p -a --mode json /skill:implement</text>
+    <text class="s-sm" x="658" y="131">timeout 45m · exit 0 = commit exists</text>
+
+    <rect x="640" y="152" width="272" height="88" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/>
+    <rect x="640" y="152" width="5" height="88" fill="#B8810F"/>
+    <text class="s-hd" x="658" y="176">worker · ticket/43</text>
+    <text class="s-sm" x="658" y="195">.wt/43</text>
+    <text class="s-sm" x="658" y="213">then: pi -p --tools read,grep,find,ls</text>
+    <text class="s-sm" x="658" y="231">/skill:code-review — fresh context</text>
+
+    <rect x="640" y="252" width="272" height="88" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/>
+    <rect x="640" y="252" width="5" height="88" fill="#B8810F"/>
+    <text class="s-hd" x="658" y="276">worker · ticket/47</text>
+    <text class="s-sm" x="658" y="295">.wt/47</text>
+    <text class="s-sm" x="658" y="313">writes nothing to tracker</text>
+    <text class="s-sm" x="658" y="331">stdout → logs/47.jsonl</text>
+  </g>
+  <path class="s-line s-amber flow" d="M588 240 H620 V96 H640"/>
+  <path class="s-line s-amber flow" d="M620 196 H640"/>
+  <path class="s-line s-amber flow" d="M620 240 V296 H640"/>
+
+  <!-- integrator -->
+  <rect x="944" y="52" width="152" height="288" rx="3" fill="#EDEEE9" stroke="#2C6B5B" stroke-width="2"/>
+  <text class="s-hd" x="960" y="78">Integrator</text>
+  <text class="s-sm" x="960" y="96">flock · N = 1</text>
+  <line x1="960" y1="106" x2="1080" y2="106" stroke="#AEB4AB"/>
+  <text class="s-txt" x="960" y="128">rebase onto</text>
+  <text class="s-txt" x="960" y="144">integration</text>
+  <path class="s-line s-verd" d="M1020 154 V172"/>
+  <text class="s-txt" x="960" y="192">gate: types</text>
+  <text class="s-txt" x="960" y="208">tests · lint</text>
+  <path class="s-line s-verd" d="M1020 218 V236"/>
+  <text class="s-txt" x="960" y="256">conflict? →</text>
+  <text class="s-txt" x="960" y="272">resolve skill</text>
+  <path class="s-line s-verd" d="M1020 282 V300"/>
+  <text class="s-txt" x="960" y="320" fill="#2C6B5B">fast-forward</text>
+
+  <path class="s-line s-verd flow" d="M912 196 H944"/>
+
+  <!-- outcomes -->
+  <rect x="640" y="392" width="200" height="70" rx="3" fill="#EDEEE9" stroke="#2C6B5B" stroke-width="1.6"/>
+  <text class="s-hd" x="656" y="416" fill="#2C6B5B">merged</text>
+  <text class="s-sm" x="656" y="436">scheduler closes ticket</text>
+  <text class="s-sm" x="656" y="452">children re-enter frontier</text>
+
+  <rect x="868" y="392" width="228" height="70" rx="3" fill="#EDEEE9" stroke="#983924" stroke-width="1.6"/>
+  <text class="s-hd" x="884" y="416" fill="#983924">ready-for-human</text>
+  <text class="s-sm" x="884" y="436">branch pushed, log attached,</text>
+  <text class="s-sm" x="884" y="452">loop continues without you</text>
+
+  <path class="s-line s-verd" d="M1000 340 V370 H740 V392"/>
+  <polygon points="735,392 745,392 740,402" fill="#2C6B5B"/>
+  <path class="s-line s-oxide dash" d="M1020 340 V392"/>
+  <polygon points="1015,392 1025,392 1020,402" fill="#983924"/>
+
+  <path class="s-line s-pruss dash" d="M640 428 H444 V358"/>
+  <polygon points="439,358 449,358 444,348" fill="#1D3B54"/>
+
+  <!-- ledger -->
+  <rect x="24" y="392" width="588" height="70" rx="3" fill="#D7DAD3" stroke="#AEB4AB"/>
+  <text class="s-hd" x="40" y="416">Run ledger — .swarm/state.json + logs/&lt;n&gt;.jsonl</text>
+  <text class="s-sm" x="40" y="436">attempt counts · worktree paths · pids · last event timestamps · outcomes</text>
+  <text class="s-sm" x="40" y="452">makes the run resumable after a crash: reconcile ledger against tracker on boot</text>
+
+  <text class="s-lbl" x="24" y="504">Invariants</text>
+  <line x1="24" y1="514" x2="1096" y2="514" stroke="#16211F" stroke-width="2"/>
+  <text class="s-txt" x="24" y="536">1 · exactly one writer to the tracker</text>
+  <text class="s-txt" x="330" y="536">2 · exactly one process merging</text>
+  <text class="s-txt" x="620" y="536">3 · one worktree per ticket</text>
+  <text class="s-txt" x="860" y="536">4 · every ticket terminates</text>
+</svg>
+<figcaption><b>Fig. 04 — System architecture.</b> The four invariants at the bottom are the whole design. Everything above is an implementation of them. Note the adapter: swapping GitHub Issues for local markdown touches five functions and nothing else.</figcaption>
+</figure>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">05 · Frontier</div>
+  <div class="rail-body">
+    <h2>Continuous frontier, not waves</h2>
+    <div class="prose">
+    <p>The obvious scheduling model is Kahn's algorithm: topologically sort the DAG into waves, run each wave in parallel, barrier between them. Several existing pi orchestrators do exactly this. It is the wrong choice here, and the reason is ticket-size variance.</p>
+    <p>Tickets are sized to "one fresh context window", which in practice spans 20 minutes to 90 minutes. A wave barrier idles every finished worker until the slowest member of the wave lands. With the variance these tickets actually have, that is a large fraction of your throughput given away for a scheduling convenience you don't need.</p>
+    <p><strong>Poll the frontier instead.</strong> Every time any ticket closes, recompute <em>open ∧ unblocked ∧ unclaimed</em> and fill any free slot immediately. A ticket becomes eligible the instant its last blocker closes, not at the next barrier. The implementation is simpler than Kahn's — you never materialise the wave structure at all, you just ask the tracker a question on a timer.</p>
+    </div>
+
+<figure class="bleed">
+<svg viewBox="0 0 1120 516" role="img" aria-label="A nine-ticket dependency graph scheduled two ways: in waves with barriers, and by continuous frontier polling, which finishes 44 units sooner on the same three slots.">
+  <text class="s-lbl" x="24" y="24">The graph — expand–contract refactor at the tail</text>
+  <line x1="24" y1="34" x2="1096" y2="34" stroke="#AEB4AB"/>
+
+  <!-- DAG -->
+  <path class="s-line" d="M92 96 L178 70"/><path class="s-line" d="M92 96 L178 122"/><path class="s-line" d="M92 96 L178 178"/>
+  <path class="s-line" d="M222 66 L318 92"/><path class="s-line" d="M222 126 L318 100"/>
+  <path class="s-line" d="M222 186 L318 186"/>
+  <path class="s-line s-pruss" d="M362 96 L438 96"/>
+  <path class="s-line s-pruss" d="M482 96 L558 70"/><path class="s-line s-pruss" d="M482 96 L558 122"/>
+  <path class="s-line s-pruss" d="M602 66 L658 90"/><path class="s-line s-pruss" d="M602 126 L658 102"/>
+
+  <circle cx="70" cy="96" r="22" fill="#EDEEE9" stroke="#3E4C4B" stroke-width="1.6"/><text class="s-txt" x="70" y="101" text-anchor="middle">41</text>
+  <text class="s-sm" x="42" y="134">prefactor</text>
+  <circle cx="200" cy="66" r="22" fill="#EDEEE9" stroke="#3E4C4B" stroke-width="1.6"/><text class="s-txt" x="200" y="71" text-anchor="middle">42</text>
+  <circle cx="200" cy="126" r="22" fill="#EDEEE9" stroke="#3E4C4B" stroke-width="1.6"/><text class="s-txt" x="200" y="131" text-anchor="middle">43</text>
+  <circle cx="200" cy="186" r="22" fill="#EDEEE9" stroke="#3E4C4B" stroke-width="1.6"/><text class="s-txt" x="200" y="191" text-anchor="middle">47</text>
+  <circle cx="340" cy="96" r="22" fill="#EDEEE9" stroke="#3E4C4B" stroke-width="1.6"/><text class="s-txt" x="340" y="101" text-anchor="middle">48</text>
+  <circle cx="340" cy="186" r="22" fill="#EDEEE9" stroke="#3E4C4B" stroke-width="1.6"/><text class="s-txt" x="340" y="191" text-anchor="middle">49</text>
+  <text class="s-sm" x="312" y="220">long, off the critical path</text>
+  <circle cx="460" cy="96" r="22" fill="#EDEEE9" stroke="#1D3B54" stroke-width="1.8"/><text class="s-txt" x="460" y="101" text-anchor="middle">51</text>
+  <text class="s-sm" x="436" y="136" fill="#1D3B54">expand</text>
+  <circle cx="580" cy="66" r="22" fill="#EDEEE9" stroke="#1D3B54" stroke-width="1.8"/><text class="s-txt" x="580" y="71" text-anchor="middle">52</text>
+  <circle cx="580" cy="126" r="22" fill="#EDEEE9" stroke="#1D3B54" stroke-width="1.8"/><text class="s-txt" x="580" y="131" text-anchor="middle">52b</text>
+  <text class="s-sm" x="546" y="166" fill="#1D3B54">migrate batches</text>
+  <circle cx="680" cy="96" r="22" fill="#EDEEE9" stroke="#1D3B54" stroke-width="1.8"/><text class="s-txt" x="680" y="101" text-anchor="middle">53</text>
+  <text class="s-sm" x="656" y="136" fill="#1D3B54">contract</text>
+
+  <rect x="756" y="52" width="340" height="150" rx="3" fill="#D7DAD3" stroke="#AEB4AB"/>
+  <text class="s-hd" x="772" y="76">Why the tail stays serial</text>
+  <text class="s-sm" x="772" y="98">51–53 are a wide refactor: one mechanical change</text>
+  <text class="s-sm" x="772" y="116">whose blast radius breaks thousands of call sites at</text>
+  <text class="s-sm" x="772" y="134">once, so no vertical slice can land green. to-tickets</text>
+  <text class="s-sm" x="772" y="152">sequences it expand → migrate → contract instead.</text>
+  <text class="s-sm" x="772" y="180" fill="#1D3B54">Only the migrate batches parallelise.</text>
+
+  <!-- waves -->
+  <text class="s-lbl" x="24" y="242">Wave scheduling · barrier between waves</text>
+  <line x1="24" y1="252" x2="1096" y2="252" stroke="#AEB4AB"/>
+  <text class="s-sm" x="24" y="278">slot 1</text><text class="s-sm" x="24" y="300">slot 2</text><text class="s-sm" x="24" y="322">slot 3</text>
+  <rect x="206" y="288" width="58" height="16" fill="#D7DAD3" stroke="#AEB4AB" stroke-dasharray="3 3"/>
+    <rect x="230" y="310" width="34" height="16" fill="#D7DAD3" stroke="#AEB4AB" stroke-dasharray="3 3"/>
+    <rect x="360" y="266" width="44" height="16" fill="#D7DAD3" stroke="#AEB4AB" stroke-dasharray="3 3"/>
+    <rect x="546" y="288" width="18" height="16" fill="#D7DAD3" stroke="#AEB4AB" stroke-dasharray="3 3"/>
+  <rect x="76" y="266" width="70" height="16" fill="#B8810F"/>
+    <text x="83" y="278" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">41</text>
+    <rect x="146" y="266" width="118" height="16" fill="#B8810F"/>
+    <text x="153" y="278" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">42</text>
+    <rect x="146" y="288" width="60" height="16" fill="#B8810F"/>
+    <text x="153" y="300" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">43</text>
+    <rect x="146" y="310" width="84" height="16" fill="#B8810F"/>
+    <text x="153" y="322" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">47</text>
+    <rect x="264" y="266" width="96" height="16" fill="#B8810F"/>
+    <text x="271" y="278" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">48</text>
+    <rect x="264" y="288" width="140" height="16" fill="#B8810F"/>
+    <text x="271" y="300" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">49</text>
+    <rect x="404" y="266" width="72" height="16" fill="#1D3B54"/>
+    <text x="411" y="278" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">51</text>
+    <rect x="476" y="266" width="88" height="16" fill="#1D3B54"/>
+    <text x="483" y="278" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">52</text>
+    <rect x="564" y="266" width="64" height="16" fill="#1D3B54"/>
+    <text x="571" y="278" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">53</text>
+    <rect x="476" y="288" width="70" height="16" fill="#1D3B54"/>
+    <text x="483" y="300" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">52b</text>
+  <line x1="146" y1="260" x2="146" y2="326" stroke="#983924" stroke-width="1.4" stroke-dasharray="4 3"/>
+    <line x1="264" y1="260" x2="264" y2="326" stroke="#983924" stroke-width="1.4" stroke-dasharray="4 3"/>
+    <line x1="404" y1="260" x2="404" y2="326" stroke="#983924" stroke-width="1.4" stroke-dasharray="4 3"/>
+    <line x1="476" y1="260" x2="476" y2="326" stroke="#983924" stroke-width="1.4" stroke-dasharray="4 3"/>
+    <line x1="564" y1="260" x2="564" y2="326" stroke="#983924" stroke-width="1.4" stroke-dasharray="4 3"/>
+  <line x1="628" y1="256" x2="628" y2="330" stroke="#16211F" stroke-width="2"/>
+  <text class="s-txt" x="638" y="304">finish · 552</text>
+  <text class="s-sm" x="76" y="348" fill="#983924">dashed = a finished worker idling at a barrier · 5 barriers</text>
+
+  <!-- frontier -->
+  <text class="s-lbl" x="24" y="380">Continuous frontier · refill the instant anything closes</text>
+  <line x1="24" y1="404" x2="1096" y2="404" stroke="#AEB4AB"/>
+  <text class="s-sm" x="24" y="416">slot 1</text><text class="s-sm" x="24" y="438">slot 2</text><text class="s-sm" x="24" y="460">slot 3</text>
+  <rect x="76" y="404" width="70" height="16" fill="#B8810F"/>
+    <text x="83" y="416" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">41</text>
+    <rect x="146" y="426" width="118" height="16" fill="#B8810F"/>
+    <text x="153" y="438" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">42</text>
+    <rect x="146" y="448" width="60" height="16" fill="#B8810F"/>
+    <text x="153" y="460" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">43</text>
+    <rect x="146" y="404" width="84" height="16" fill="#B8810F"/>
+    <text x="153" y="416" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">47</text>
+    <rect x="264" y="404" width="96" height="16" fill="#B8810F"/>
+    <text x="271" y="416" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">48</text>
+    <rect x="230" y="448" width="140" height="16" fill="#B8810F"/>
+    <text x="237" y="460" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">49</text>
+    <rect x="360" y="426" width="72" height="16" fill="#1D3B54"/>
+    <text x="367" y="438" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">51</text>
+    <rect x="432" y="448" width="88" height="16" fill="#1D3B54"/>
+    <text x="439" y="460" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">52</text>
+    <rect x="520" y="426" width="64" height="16" fill="#1D3B54"/>
+    <text x="527" y="438" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">53</text>
+    <rect x="432" y="404" width="70" height="16" fill="#1D3B54"/>
+    <text x="439" y="416" font-family="IBM Plex Mono" font-size="10" fill="#EDEEE9">52b</text>
+  <line x1="584" y1="394" x2="584" y2="468" stroke="#2C6B5B" stroke-width="2"/>
+  <text class="s-txt" x="594" y="442" fill="#2C6B5B">finish · 508</text>
+  <text class="s-sm" x="76" y="494" fill="#2C6B5B">#49 starts the moment #47 closes, not at the next barrier — 44 units earlier overall</text>
+</svg>
+<figcaption><b>Fig. 05 — Waves versus frontier.</b> Same DAG, same three slots, same per-ticket durations — both schedules were computed rather than drawn by eye. Waves finish at 552, the frontier at 508. The whole difference is #49: it becomes eligible at t=154 when #47 closes, but a wave scheduler holds it until the barrier at t=188 and then makes it the long pole of its wave.</figcaption>
+</figure>
+
+    <div class="prose">
+    <h3>Getting the frontier from the tracker</h3>
+    <p>GitHub issue dependencies went generally available in August 2025 with full REST and webhook support, which is what makes this cheap. The <code>issue_dependencies_summary.blocked_by</code> count reflects <em>open</em> blockers only, so it is a live gate you can read directly rather than a graph you have to reconstruct. And because <code>to-tickets</code> publishes blockers first, their numbers always exist at creation time — <code>gh issue create --blocked-by 12,15</code> works.</p>
+    </div>
+
+<div class="filebar"><span>frontier query · GitHub</span><span>bash</span></div>
+<pre><code><span class="c-c"># open, labelled ready, unassigned, and with zero open blockers</span>
+gh issue list --state open --label ready-for-agent \
+  --json number,title,assignees \
+  --jq <span class="c-s">'.[] | select(.assignees | length == 0) | .number'</span> \
+| <span class="c-k">while read</span> n; <span class="c-k">do</span>
+    blocked=$(gh api <span class="c-s">"repos/$REPO/issues/$n"</span> \
+      --jq <span class="c-s">'.issue_dependencies_summary.blocked_by // 0'</span>)
+    [ <span class="c-s">"$blocked"</span> -eq 0 ] &amp;&amp; [ <span class="c-s">"$n"</span> != <span class="c-s">"$SPEC_ISSUE"</span> ] &amp;&amp; <span class="c-k">echo</span> <span class="c-s">"$n"</span>
+  <span class="c-k">done</span></code></pre>
+
+    <div class="note"><b>Do not skip the spec exclusion</b>
+      <p>Without <code>[ "$n" != "$SPEC_ISSUE" ]</code> your first worker picks up the parent spec — which carries <code>ready-for-agent</code> because <code>to-spec</code> put it there — and attempts to build the entire feature in a single run. It will burn your whole budget and produce an unmergeable branch. Strip the label from the spec after <code>to-tickets</code>, exclude it by number, or both.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">06 · Claiming</div>
+  <div class="rail-body">
+    <h2>Three tiers of atomicity — pick the cheapest that fits</h2>
+    <div class="prose">
+    <p>"Two agents could claim the same ticket" is the concern that makes people over-engineer. It only exists if more than one process claims. Tier 1 removes the concurrency instead of managing it, and is what you should ship.</p>
+    </div>
+
+<figure class="bleed">
+<svg viewBox="0 0 1120 430" role="img" aria-label="Sequence diagram comparing three claim strategies: single scheduler, flock on one host, and git ref compare-and-swap across hosts.">
+  <!-- tier 1 -->
+  <rect x="20" y="20" width="348" height="392" rx="3" fill="#EDEEE9" stroke="#2C6B5B" stroke-width="1.8"/>
+  <text class="s-lbl" x="38" y="46" fill="#2C6B5B">Tier 1 · ship this</text>
+  <text class="s-hd" x="38" y="70">Single claimer</text>
+  <text class="s-sm" x="38" y="90">one scheduler process, N worker children</text>
+
+  <line x1="76" y1="106" x2="76" y2="368" stroke="#3E4C4B" stroke-width="1.2"/>
+  <line x1="220" y1="106" x2="220" y2="368" stroke="#3E4C4B" stroke-width="1.2"/>
+  <line x1="330" y1="106" x2="330" y2="368" stroke="#3E4C4B" stroke-width="1.2"/>
+  <text class="s-sm" x="46" y="120">sched</text><text class="s-sm" x="198" y="120">tracker</text><text class="s-sm" x="308" y="120">worker</text>
+
+  <path class="s-line s-pruss" d="M76 146 H214"/><polygon points="214,141 224,146 214,151" fill="#1D3B54"/>
+  <text class="s-sm" x="86" y="140">frontier()</text>
+  <path class="s-line s-pruss dash" d="M220 176 H82"/><polygon points="82,171 72,176 82,181" fill="#1D3B54"/>
+  <text class="s-sm" x="86" y="170">[42, 43, 47]</text>
+
+  <rect x="46" y="192" width="120" height="34" rx="2" fill="#D7DAD3" stroke="#2C6B5B"/>
+  <text class="s-sm" x="56" y="206">pick 42</text><text class="s-sm" x="56" y="220">in-process, no race</text>
+
+  <path class="s-line s-pruss" d="M76 250 H214"/><polygon points="214,245 224,250 214,255" fill="#1D3B54"/>
+  <text class="s-sm" x="86" y="244">claim(42)</text>
+  <path class="s-line s-amber" d="M76 286 H324"/><polygon points="324,281 334,286 324,291" fill="#B8810F"/>
+  <text class="s-sm" x="86" y="280">spawn(42, .wt/42)</text>
+  <path class="s-line s-verd dash" d="M330 326 H82"/><polygon points="82,321 72,326 82,331" fill="#2C6B5B"/>
+  <text class="s-sm" x="96" y="320">exit 0 + sha</text>
+  <path class="s-line s-verd" d="M76 358 H214"/><polygon points="214,353 224,358 214,363" fill="#2C6B5B"/>
+  <text class="s-sm" x="86" y="352">close(42)</text>
+
+  <text class="s-sm" x="38" y="392" fill="#2C6B5B">Race impossible by construction. ~0 extra code.</text>
+
+  <!-- tier 2 -->
+  <rect x="386" y="20" width="348" height="392" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/>
+  <text class="s-lbl" x="404" y="46" fill="#B8810F">Tier 2 · one host, many schedulers</text>
+  <text class="s-hd" x="404" y="70">flock the transaction</text>
+  <text class="s-sm" x="404" y="90">the whole read–pick–claim is critical section</text>
+
+  <rect x="404" y="108" width="312" height="120" rx="2" fill="#D7DAD3" stroke="#B8810F" stroke-width="1.4"/>
+  <text class="s-sm" x="416" y="130">flock 9 .swarm/claim.lock</text>
+  <text class="s-sm" x="416" y="152">  n = frontier() | head -1</text>
+  <text class="s-sm" x="416" y="174">  claim(n)</text>
+  <text class="s-sm" x="416" y="196">  readback: assignee == me ?</text>
+  <text class="s-sm" x="416" y="218">release</text>
+
+  <text class="s-sm" x="404" y="252" fill="#B8810F">Why readback matters:</text>
+  <text class="s-sm" x="404" y="272">gh issue edit --add-assignee is last-write-wins,</text>
+  <text class="s-sm" x="404" y="290">not compare-and-swap. The lock protects you</text>
+  <text class="s-sm" x="404" y="308">locally; the readback catches anything that</text>
+  <text class="s-sm" x="404" y="326">claimed from outside the lock — a human on the</text>
+  <text class="s-sm" x="404" y="344">web UI, a second host, a stale process.</text>
+  <rect x="404" y="360" width="312" height="34" rx="2" fill="#EDEEE9" stroke="#AEB4AB"/>
+  <text class="s-sm" x="416" y="382">lost the readback → drop it, re-query, continue</text>
+
+  <!-- tier 3 -->
+  <rect x="752" y="20" width="348" height="392" rx="3" fill="#EDEEE9" stroke="#1D3B54" stroke-width="1.6"/>
+  <text class="s-lbl" x="770" y="46" fill="#1D3B54">Tier 3 · many hosts</text>
+  <text class="s-hd" x="770" y="70">git ref compare-and-swap</text>
+  <text class="s-sm" x="770" y="90">the remote is already a consensus store</text>
+
+  <rect x="770" y="108" width="312" height="96" rx="2" fill="#111A19"/>
+  <text x="782" y="130" font-family="IBM Plex Mono" font-size="11" fill="#8FBFA8">git push origin \</text>
+  <text x="782" y="150" font-family="IBM Plex Mono" font-size="11" fill="#8FBFA8">  $(git commit-tree -m "claim 42" ...) \</text>
+  <text x="782" y="170" font-family="IBM Plex Mono" font-size="11" fill="#8FBFA8">  refs/claims/42</text>
+  <text x="782" y="192" font-family="IBM Plex Mono" font-size="11" fill="#7E8F8B"># second pusher is rejected. that is the CAS.</text>
+
+  <text class="s-sm" x="770" y="230">The remote refuses a non-fast-forward create on an</text>
+  <text class="s-sm" x="770" y="248">existing ref, so exactly one host wins per ticket.</text>
+  <text class="s-sm" x="770" y="266">No extra infrastructure needed.</text>
+
+  <rect x="770" y="288" width="312" height="106" rx="2" fill="#D7DAD3" stroke="#AEB4AB"/>
+  <text class="s-sm" x="782" y="310" fill="#1D3B54">Lease expiry</text>
+  <text class="s-sm" x="782" y="330">Stamp the claim commit with a timestamp; a</text>
+  <text class="s-sm" x="782" y="348">sweeper deletes refs older than the worker</text>
+  <text class="s-sm" x="782" y="366">timeout so a dead host's tickets return to</text>
+  <text class="s-sm" x="782" y="384">the frontier instead of leaking.</text>
+</svg>
+<figcaption><b>Fig. 06 — Claim protocol tiers.</b> Tier 1 is what the scripts in §09 implement. Tiers 2 and 3 exist so you know the upgrade path is short, not because you should start there.</figcaption>
+</figure>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">07 · State</div>
+  <div class="rail-body">
+    <h2>The state machine the skills don't ship</h2>
+    <div class="prose">
+    <p>The canonical vocabulary is five triage labels: <code>needs-triage</code>, <code>needs-info</code>, <code>ready-for-agent</code>, <code>ready-for-human</code>, <code>wontfix</code>. That set was designed for humans triaging inbound issues, and it has two documented gaps that bite an AFK runner specifically.</p>
+    <p>First, there is no <strong>blocked</strong> state — an issue that is fully specified but waiting on another issue is "technically <code>ready-for-agent</code>" and misleading, so an agent picks it up and hits a wall. Second, and worse for automation, there is no terminal <strong>awaiting-verification</strong> state, <em>without which an AFK runner can re-queue finished tickets</em>. Both are acknowledged as real and neither has shipped.</p>
+    <p>So add your own, namespaced so they never collide with the canonical five. Only the scheduler writes them.</p>
+    </div>
+
+<figure class="bleed">
+<svg viewBox="0 0 1120 400" role="img" aria-label="Ticket state machine from ready-for-agent through claimed, building, in-review, merging, to merged or ready-for-human, with retry loops.">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3E4C4B"/></marker>
+    <marker id="aro" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#983924"/></marker>
+    <marker id="arv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2C6B5B"/></marker>
+  </defs>
+
+  <text class="s-lbl" x="24" y="26">Canonical (ships with the skills)</text>
+  <text class="s-lbl" x="330" y="26">Yours — namespaced swarm:*</text>
+  <text class="s-lbl" x="900" y="26">Terminal</text>
+  <line x1="24" y1="36" x2="1096" y2="36" stroke="#AEB4AB"/>
+
+  <!-- states -->
+  <rect x="24" y="140" width="150" height="56" rx="3" fill="#EDEEE9" stroke="#1D3B54" stroke-width="1.8"/>
+  <text class="s-txt" x="99" y="164" text-anchor="middle" fill="#1D3B54">ready-for-agent</text>
+  <text class="s-sm" x="99" y="182" text-anchor="middle">to-tickets sets this</text>
+
+  <rect x="234" y="140" width="132" height="56" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.8"/>
+  <text class="s-txt" x="300" y="164" text-anchor="middle" fill="#B8810F">swarm:claimed</text>
+  <text class="s-sm" x="300" y="182" text-anchor="middle">assignee set</text>
+
+  <rect x="426" y="140" width="132" height="56" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.8"/>
+  <text class="s-txt" x="492" y="164" text-anchor="middle" fill="#B8810F">swarm:building</text>
+  <text class="s-sm" x="492" y="182" text-anchor="middle">worker alive</text>
+
+  <rect x="618" y="140" width="132" height="56" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.8"/>
+  <text class="s-txt" x="684" y="164" text-anchor="middle" fill="#B8810F">swarm:in-review</text>
+  <text class="s-sm" x="684" y="182" text-anchor="middle">commit exists</text>
+
+  <rect x="810" y="140" width="120" height="56" rx="3" fill="#EDEEE9" stroke="#2C6B5B" stroke-width="1.8"/>
+  <text class="s-txt" x="870" y="164" text-anchor="middle" fill="#2C6B5B">swarm:merging</text>
+  <text class="s-sm" x="870" y="182" text-anchor="middle">holds the lock</text>
+
+  <rect x="978" y="60" width="118" height="56" rx="3" fill="#2C6B5B" stroke="#2C6B5B"/>
+  <text class="s-txt" x="1037" y="84" text-anchor="middle" fill="#EDEEE9">closed</text>
+  <text class="s-sm" x="1037" y="102" text-anchor="middle" fill="#C9DBD4">criteria ticked</text>
+
+  <rect x="978" y="256" width="118" height="56" rx="3" fill="#983924" stroke="#983924"/>
+  <text class="s-txt" x="1037" y="280" text-anchor="middle" fill="#EDEEE9">ready-for-human</text>
+  <text class="s-sm" x="1037" y="298" text-anchor="middle" fill="#EEC9C0">loop continues</text>
+
+  <!-- happy path -->
+  <path class="s-line" d="M174 168 H228" marker-end="url(#ar)"/>
+  <path class="s-line" d="M366 168 H420" marker-end="url(#ar)"/>
+  <path class="s-line" d="M558 168 H612" marker-end="url(#ar)"/>
+  <path class="s-line" d="M750 168 H804" marker-end="url(#ar)"/>
+  <path class="s-line s-verd" d="M930 158 Q970 158 990 122" marker-end="url(#arv)"/>
+  <text class="s-sm" x="936" y="216" fill="#2C6B5B">gate green</text>
+
+  <!-- retry loops -->
+  <path class="s-line s-oxide dash" d="M492 196 V236 H300 V202" marker-end="url(#aro)"/>
+  <text class="s-sm" x="330" y="230" fill="#983924">worker exit≠0 or timeout · attempt++</text>
+
+  <path class="s-line s-oxide dash" d="M684 196 V268 H300 V204" marker-end="url(#aro)"/>
+  <text class="s-sm" x="330" y="262" fill="#983924">review found blocking defects · attempt++</text>
+
+  <path class="s-line s-oxide dash" d="M870 196 V300 H310 V206" marker-end="url(#aro)"/>
+  <text class="s-sm" x="330" y="294" fill="#983924">rebase conflict unresolvable, or gate red after resolve</text>
+
+  <!-- escalation -->
+  <path class="s-line s-oxide" d="M300 196 V340 H1037 V318" marker-end="url(#aro)"/>
+  <text class="s-sm" x="470" y="334" fill="#983924">attempt &gt; 2 · push the branch, attach the run log, release the claim</text>
+
+  <!-- unblock fan -->
+  <path class="s-line s-verd dash" d="M1037 116 V128 H99 V134" marker-end="url(#arv)"/>
+  <text class="s-sm" x="470" y="112" fill="#2C6B5B">close → children's blocked_by drops to 0 → they enter the frontier on the next poll</text>
+
+  <!-- notes -->
+  <rect x="24" y="360" width="1072" height="34" rx="2" fill="#D7DAD3" stroke="#AEB4AB"/>
+  <text class="s-sm" x="38" y="382">Invariant: every transition is written by the scheduler. A worker that writes a label has broken the machine.</text>
+</svg>
+<figcaption><b>Fig. 07 — Ticket state machine.</b> The two states the skills lack are <code>swarm:in-review</code> (the missing awaiting-verification terminal, without which finished work gets re-queued) and the implicit blocked state, handled here by the frontier query rather than a label.</figcaption>
+</figure>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">08 · Isolation</div>
+  <div class="rail-body">
+    <h2>Worktrees, and the one thing they don't isolate</h2>
+    <div class="prose">
+    <p>A git worktree gives each worker its own working directory, its own index, and its own HEAD. That kills two of the three corruption modes in Fig. 03B. It does <strong>not</strong> give each worker its own <code>refs/stash</code> — the stash reflog lives in the shared common directory, so a stash pushed in one worktree is visible and poppable in another. That is the third failure, and worktrees alone do not fix it.</p>
+    <p>Two mitigations, use both. Forbid <code>git stash</code> in the worker's appended system prompt, and give each worker a clean tree it never needs to stash from in the first place.</p>
+    </div>
+
+<figure class="bleed">
+<svg viewBox="0 0 1120 380" role="img" aria-label="Git repository topology showing per-worktree private state versus shared common directory state, highlighting refs/stash as shared.">
+  <text class="s-lbl" x="24" y="26">Repository topology</text>
+  <line x1="24" y1="36" x2="1096" y2="36" stroke="#AEB4AB"/>
+
+  <!-- common dir -->
+  <rect x="24" y="56" width="330" height="292" rx="3" fill="#EDEEE9" stroke="#1D3B54" stroke-width="1.8"/>
+  <text class="s-hd" x="42" y="82">.git/ — common directory</text>
+  <text class="s-sm" x="42" y="100">shared by every worktree</text>
+  <line x1="42" y1="112" x2="336" y2="112" stroke="#AEB4AB"/>
+  <text class="s-txt" x="42" y="136">objects/</text><text class="s-sm" x="180" y="136">shared — fine</text>
+  <text class="s-txt" x="42" y="162">refs/heads/</text><text class="s-sm" x="180" y="162">shared — one branch each</text>
+  <text class="s-txt" x="42" y="188">refs/remotes/</text><text class="s-sm" x="180" y="188">shared — fine</text>
+  <text class="s-txt" x="42" y="214">config</text><text class="s-sm" x="180" y="214">shared — fine</text>
+  <rect x="36" y="228" width="306" height="46" rx="2" fill="#EDEEE9" stroke="#983924" stroke-width="1.8"/>
+  <text class="s-txt" x="42" y="250" fill="#983924">refs/stash</text>
+  <text class="s-sm" x="180" y="250" fill="#983924">SHARED — the trap</text>
+  <text class="s-sm" x="42" y="266" fill="#983924">one stack, every worktree pushes and pops it</text>
+  <text class="s-sm" x="42" y="300">A stash pushed in .wt/43 can be popped in .wt/47,</text>
+  <text class="s-sm" x="42" y="318">silently applying the wrong diff to the wrong branch.</text>
+  <text class="s-sm" x="42" y="336" fill="#983924">Reported as "a stash vanished from refs/stash".</text>
+
+  <!-- worktrees -->
+  <g>
+    <rect x="392" y="56" width="330" height="86" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/>
+    <text class="s-hd" x="410" y="80">.wt/42 — private</text>
+    <text class="s-sm" x="410" y="100">own working tree · own index · own HEAD</text>
+    <text class="s-sm" x="410" y="118">.git file → points at common dir</text>
+    <text class="s-sm" x="410" y="136" fill="#2C6B5B">branch ticket/42 · never shared</text>
+
+    <rect x="392" y="158" width="330" height="86" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/>
+    <text class="s-hd" x="410" y="182">.wt/43 — private</text>
+    <text class="s-sm" x="410" y="202">own working tree · own index · own HEAD</text>
+    <text class="s-sm" x="410" y="220">worktrees/43/ metadata in common dir</text>
+    <text class="s-sm" x="410" y="238" fill="#2C6B5B">branch ticket/43 · never shared</text>
+
+    <rect x="392" y="260" width="330" height="88" rx="3" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/>
+    <text class="s-hd" x="410" y="284">.wt/47 — private</text>
+    <text class="s-sm" x="410" y="304">deleted on success, kept on escalation</text>
+    <text class="s-sm" x="410" y="322">so a human can walk into the failure</text>
+    <text class="s-sm" x="410" y="340" fill="#2C6B5B">branch ticket/47 · never shared</text>
+  </g>
+  <path class="s-line s-oxide dash" d="M392 99 H354"/>
+  <path class="s-line s-oxide dash" d="M392 201 H354"/>
+  <path class="s-line s-oxide dash" d="M392 304 H354"/>
+
+  <!-- mitigations -->
+  <rect x="760" y="56" width="336" height="292" rx="3" fill="#D7DAD3" stroke="#AEB4AB"/>
+  <text class="s-hd" x="778" y="82">Worker guardrails</text>
+  <text class="s-sm" x="778" y="100">appended to the system prompt, every run</text>
+  <line x1="778" y1="112" x2="1078" y2="112" stroke="#AEB4AB"/>
+  <text class="s-txt" x="778" y="136">✗ git stash</text>
+  <text class="s-sm" x="798" y="152">shared reflog, corrupts siblings</text>
+  <text class="s-txt" x="778" y="178">✗ git commit --amend</text>
+  <text class="s-sm" x="798" y="194">rewrites history the integrator rebases</text>
+  <text class="s-txt" x="778" y="220">✗ git checkout / switch branches</text>
+  <text class="s-sm" x="798" y="236">stay on the branch you were given</text>
+  <text class="s-txt" x="778" y="262">✗ git push · gh issue · git merge</text>
+  <text class="s-sm" x="798" y="278">tracker and remote belong to the scheduler</text>
+  <text class="s-txt" x="778" y="304">✓ add, commit, diff, log, status</text>
+  <text class="s-sm" x="798" y="320">and nothing else in the git namespace</text>
+  <text class="s-sm" x="778" y="340" fill="#1D3B54">Enforce with a pi tool_call gate for teeth.</text>
+</svg>
+<figcaption><b>Fig. 08 — Worktree isolation and its limit.</b> Everything in the amber boxes is genuinely private. Everything in the blue box is shared, and only one entry in it is dangerous — but that one entry has already cost people a working afternoon.</figcaption>
+</figure>
+
+    <div class="note warn"><b>Enforcing the guardrails properly</b>
+      <p>Prompt text is a request, not a constraint. pi's <code>tool_call</code> extension event fires before the tool executes and can return <code>{ block: true, reason }</code> — with <code>terminate: true</code> to stop the batch without another model call. Twenty lines of TypeScript loaded with <code>-e ./guard.ts</code> turns the list above from a hope into a rule. Worth doing once you are running unattended overnight rather than watching.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">09 · Merge</div>
+  <div class="rail-body">
+    <h2>One track through the junction</h2>
+    <div class="prose">
+    <p>Merging is the only stage that must be strictly serial. Two branches that each pass their gate in isolation can still break the build together — that is the entire reason merge queues exist. The integrator takes a lock, rebases one branch onto the current integration tip, runs the gate <em>after</em> the rebase, and only then fast-forwards.</p>
+    <p>Rebase rather than merge, so the integration branch stays linear and each ticket lands as a reviewable unit. Gate after rebase, not before, because the worker's green was measured against a stale base.</p>
+    </div>
+
+<figure class="bleed">
+<svg viewBox="0 0 1120 430" role="img" aria-label="Merge queue flowchart: acquire lock, fetch, rebase, detect conflict, resolve with pi skill, run gate, fast-forward or escalate.">
+  <defs>
+    <marker id="mq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3E4C4B"/></marker>
+  </defs>
+  <text class="s-lbl" x="24" y="26">Integrator · holds flock for the whole sequence · N = 1 globally</text>
+  <line x1="24" y1="36" x2="1096" y2="36" stroke="#AEB4AB"/>
+
+  <rect class="s-box" x="24" y="60" width="150" height="48" rx="2"/><text class="s-txt" x="99" y="90" text-anchor="middle">acquire lock</text>
+  <path class="s-line" d="M99 108 V138" marker-end="url(#mq)"/>
+  <rect class="s-box" x="24" y="138" width="150" height="48" rx="2"/><text class="s-txt" x="99" y="162" text-anchor="middle">fetch + checkout</text><text class="s-sm" x="99" y="178" text-anchor="middle">ticket/NN</text>
+  <path class="s-line" d="M99 186 V216" marker-end="url(#mq)"/>
+  <rect class="s-box" x="24" y="216" width="150" height="48" rx="2"/><text class="s-txt" x="99" y="240" text-anchor="middle">rebase onto</text><text class="s-sm" x="99" y="256" text-anchor="middle">integration</text>
+  <path class="s-line" d="M174 240 H222" marker-end="url(#mq)"/>
+
+  <!-- decision: conflict -->
+  <g transform="translate(300,240)">
+    <polygon points="0,-44 78,0 0,44 -78,0" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/>
+    <text class="s-txt" x="0" y="-4" text-anchor="middle">conflict?</text>
+    <text class="s-sm" x="0" y="14" text-anchor="middle">unmerged paths</text>
+  </g>
+  <text class="s-sm" x="306" y="182" fill="#B8810F">yes</text>
+  <path class="s-line s-amber" d="M300 196 V150" marker-end="url(#mq)"/>
+  <rect x="196" y="90" width="212" height="60" rx="2" fill="#EDEEE9" stroke="#B8810F" stroke-width="1.6"/>
+  <text class="s-txt" x="210" y="112">pi -p /skill:resolving-</text>
+  <text class="s-txt" x="210" y="128">merge-conflicts</text>
+  <text class="s-sm" x="210" y="144">"always resolve, never --abort"</text>
+  <path class="s-line s-amber" d="M408 120 H452 V216" marker-end="url(#mq)"/>
+
+  <text class="s-sm" x="392" y="232" fill="#2C6B5B">no</text>
+  <path class="s-line s-verd" d="M378 240 H452" marker-end="url(#mq)"/>
+
+  <rect class="s-box" x="452" y="216" width="164" height="48" rx="2"/>
+  <text class="s-txt" x="534" y="240" text-anchor="middle">run the gate</text>
+  <text class="s-sm" x="534" y="256" text-anchor="middle">typecheck · tests · lint</text>
+  <path class="s-line" d="M616 240 H664" marker-end="url(#mq)"/>
+
+  <g transform="translate(736,240)">
+    <polygon points="0,-44 66,0 0,44 -66,0" fill="#EDEEE9" stroke="#2C6B5B" stroke-width="1.6"/>
+    <text class="s-txt" x="0" y="5" text-anchor="middle">green?</text>
+  </g>
+
+  <path class="s-line s-verd" d="M802 240 H868" marker-end="url(#mq)"/>
+  <text class="s-sm" x="812" y="232" fill="#2C6B5B">yes</text>
+  <rect x="868" y="216" width="188" height="48" rx="2" fill="#EDEEE9" stroke="#2C6B5B" stroke-width="1.8"/>
+  <text class="s-txt" x="962" y="240" text-anchor="middle" fill="#2C6B5B">fast-forward</text>
+  <text class="s-sm" x="962" y="256" text-anchor="middle">integration ← ticket/NN</text>
+
+  <path class="s-line s-oxide" d="M736 284 V330" marker-end="url(#mq)"/>
+  <text class="s-sm" x="744" y="310" fill="#983924">no</text>
+  <rect x="620" y="330" width="232" height="52" rx="2" fill="#EDEEE9" stroke="#983924" stroke-width="1.6"/>
+  <text class="s-txt" x="634" y="352" fill="#983924">rebase --abort · release lock</text>
+  <text class="s-sm" x="634" y="370">attempt++ → back to swarm:claimed</text>
+
+  <path class="s-line s-verd" d="M962 264 V310 H1040 V336" marker-end="url(#mq)"/>
+  <rect x="862" y="336" width="234" height="52" rx="2" fill="#EDEEE9" stroke="#2C6B5B" stroke-width="1.6"/>
+  <text class="s-txt" x="876" y="358" fill="#2C6B5B">close ticket · tick criteria</text>
+  <text class="s-sm" x="876" y="376">remove worktree · release lock</text>
+
+  <!-- why serial -->
+  <rect x="24" y="300" width="560" height="106" rx="3" fill="#D7DAD3" stroke="#AEB4AB"/>
+  <text class="s-hd" x="40" y="326">Why the gate runs after the rebase</text>
+  <text class="s-sm" x="40" y="348">The worker's green was measured against the base it branched from. By the time</text>
+  <text class="s-sm" x="40" y="366">it reaches the queue, other tickets have landed. Two branches that each pass in</text>
+  <text class="s-sm" x="40" y="384">isolation can fail together — semantic conflict with no textual conflict, which is</text>
+  <text class="s-sm" x="40" y="400">exactly what a three-way merge will not catch for you.</text>
+</svg>
+<figcaption><b>Fig. 09 — The merge queue.</b> The conflict branch reuses <code>resolving-merge-conflicts</code>, whose own instruction is to read the commit messages and originating tickets for both sides, preserve both intents, and never <code>--abort</code>. pi also ships <code>examples/extensions/git-merge-and-resolve.ts</code>, which parses conflict hunks into file, line range, ours and theirs and feeds them back to the agent — a working reference for this exact stage.</figcaption>
+</figure>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">10 · Ladder</div>
+  <div class="rail-body">
+    <h2>Every ticket must terminate</h2>
+    <div class="prose">
+    <p>"Fully autonomous" does not mean every ticket lands. It means the loop never <em>blocks</em> on you. A ticket that cannot be built must reach a terminal state and get out of the way, so the rest of the graph keeps moving.</p>
+    <p>The subtle failure here is worth calling out because it cost real money during testing. If escalation is expressed only as a remote label change, and that write fails — rate limit, permissions, network — the ticket returns to the frontier and is dispatched again immediately. The run below did that 49 times in 60 seconds before the ledger fix. <strong>Loop termination must be recorded locally and authoritatively.</strong> The remote label is for humans; the local marker is for the loop.</p>
+    </div>
+
+<figure class="bleed">
+<svg viewBox="0 0 1120 300" role="img" aria-label="Escalation ladder: each failure class, its detection, and its terminal outcome.">
+  <text class="s-lbl" x="24" y="26">Failure class</text>
+  <text class="s-lbl" x="290" y="26">Detected by</text>
+  <text class="s-lbl" x="580" y="26">Response</text>
+  <text class="s-lbl" x="880" y="26">Terminates?</text>
+  <line x1="24" y1="36" x2="1096" y2="36" stroke="#16211F" stroke-width="2"/>
+
+  <g>
+    <text class="s-txt" x="24" y="66">worker exits non-zero</text>
+    <text class="s-sm" x="290" y="66">exit code</text>
+    <text class="s-sm" x="580" y="66">requeue, attempt++</text>
+    <circle class="f-amber" cx="890" cy="62" r="5"/><text class="s-sm" x="904" y="66">after 2</text>
+    <line x1="24" y1="80" x2="1096" y2="80" stroke="#C2C7BF"/>
+
+    <text class="s-txt" x="24" y="106">worker hangs</text>
+    <text class="s-sm" x="290" y="106">timeout --kill-after</text>
+    <text class="s-sm" x="580" y="106">SIGTERM then SIGKILL, requeue</text>
+    <circle class="f-amber" cx="890" cy="102" r="5"/><text class="s-sm" x="904" y="106">after 2</text>
+    <line x1="24" y1="120" x2="1096" y2="120" stroke="#C2C7BF"/>
+
+    <text class="s-txt" x="24" y="146">ran, produced no commit</text>
+    <text class="s-sm" x="290" y="146">git rev-list --count base..HEAD</text>
+    <text class="s-sm" x="580" y="146">treat as failure regardless of exit 0</text>
+    <circle class="f-amber" cx="890" cy="142" r="5"/><text class="s-sm" x="904" y="146">after 2</text>
+    <line x1="24" y1="160" x2="1096" y2="160" stroke="#C2C7BF"/>
+
+    <text class="s-txt" x="24" y="186">review found real defects</text>
+    <text class="s-sm" x="290" y="186">VERDICT: FAIL sentinel line</text>
+    <text class="s-sm" x="580" y="186">requeue with the review attached</text>
+    <circle class="f-amber" cx="890" cy="182" r="5"/><text class="s-sm" x="904" y="186">after 2</text>
+    <line x1="24" y1="200" x2="1096" y2="200" stroke="#C2C7BF"/>
+
+    <text class="s-txt" x="24" y="226">unresolvable conflict</text>
+    <text class="s-sm" x="290" y="226">rebase dir still present after agent</text>
+    <text class="s-sm" x="580" y="226">abort, release lock, requeue onto new tip</text>
+    <circle class="f-amber" cx="890" cy="222" r="5"/><text class="s-sm" x="904" y="226">after 2</text>
+    <line x1="24" y1="240" x2="1096" y2="240" stroke="#C2C7BF"/>
+
+    <text class="s-txt" x="24" y="266">gate red after rebase</text>
+    <text class="s-sm" x="290" y="266">gate exit code, post-rebase</text>
+    <text class="s-sm" x="580" y="266">do not land; requeue — base moved under it</text>
+    <circle class="f-oxide" cx="890" cy="262" r="5"/><text class="s-sm" x="904" y="266">immediately, if twice</text>
+    <line x1="24" y1="280" x2="1096" y2="280" stroke="#16211F" stroke-width="2"/>
+  </g>
+</svg>
+<figcaption><b>Fig. 10 — Escalation ladder.</b> Note row three: a worker can exit zero having done nothing. Exit code alone is not a success signal — the presence of a commit is.</figcaption>
+</figure>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">11 · Code</div>
+  <div class="rail-body">
+    <h2>The two scripts</h2>
+    <div class="prose">
+    <p>Roughly 250 lines total. Both were smoke-tested end to end against stubbed <code>gh</code> and <code>pi</code> binaries in throwaway git repos — including the dependency-unblock path, the retry-then-escalate path, two workers editing the same file, and a genuine line-level conflict routed through the resolver. Results are in §12.</p>
+    <h3>swarm.sh — the scheduler</h3>
+    <p>The tracker adapter is five functions at the top. Everything below them is tracker-agnostic; swapping GitHub Issues for <code>.scratch/</code> markdown means rewriting those five and nothing else.</p>
+    </div>
+<div class="filebar"><span>swarm.sh</span><span>chmod +x · run from repo root</span></div>
+<pre><code>#!/usr/bin/env bash
+# swarm.sh — autonomous ticket execution for pi + mattpocock/skills
+#
+#   The scheduler. Owns every write to the tracker. Workers own nothing.
+#
+#   Usage:  ./swarm.sh            run until the frontier is empty
+#           ./swarm.sh --dry-run  print the frontier and exit
+#           ./swarm.sh --status   show ledger state and exit
+#
+#   Requires: git &gt;= 2.30, gh (authenticated), pi &gt;= 0.84, jq, flock, timeout
+set -euo pipefail
+
+# ─────────────────────────────────────────────────────── configuration ──
+REPO=&quot;${SWARM_REPO:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}&quot;
+SPEC_ISSUE=&quot;${SWARM_SPEC_ISSUE:-0}&quot;      # parent spec — MUST be excluded
+INTEGRATION=&quot;${SWARM_INTEGRATION:-integration}&quot;
+MAX_PARALLEL=&quot;${SWARM_MAX_PARALLEL:-3}&quot;
+WORKER_TIMEOUT=&quot;${SWARM_WORKER_TIMEOUT:-45m}&quot;
+POLL_SECONDS=&quot;${SWARM_POLL:-20}&quot;
+MAX_ATTEMPTS=&quot;${SWARM_MAX_ATTEMPTS:-2}&quot;
+MODEL=&quot;${SWARM_MODEL:-sonnet}&quot;
+REVIEW_MODEL=&quot;${SWARM_REVIEW_MODEL:-$MODEL}&quot;
+GATE=&quot;${SWARM_GATE:-npm run typecheck &amp;&amp; npm test}&quot;
+
+ROOT=&quot;$(git rev-parse --show-toplevel)&quot;
+SWARM=&quot;$ROOT/.swarm&quot;
+WT=&quot;$ROOT/.wt&quot;
+mkdir -p &quot;$SWARM&quot;/{result,attempts,pid,done} &quot;$SWARM/logs&quot; &quot;$WT&quot;
+export PI_CACHE_RETENTION=long
+
+log() { printf &#x27;%s  %s\n&#x27; &quot;$(date +%H:%M:%S)&quot; &quot;$*&quot; &gt;&amp;2; }
+
+# ───────────────────────────────────────────── tracker adapter · GitHub ──
+# Swap these five functions to move to Linear, Jira, or local markdown.
+# Nothing else in this file knows what a tracker is.
+
+tracker_frontier() {
+  # open ∧ ready-for-agent ∧ unassigned ∧ zero open blockers ∧ not the spec
+  gh issue list --repo &quot;$REPO&quot; --state open --label ready-for-agent \
+      --limit 200 --json number,assignees \
+      --jq &#x27;.[] | select(.assignees | length == 0) | .number&#x27; \
+  | while read -r n; do
+      [ &quot;$n&quot; = &quot;$SPEC_ISSUE&quot; ] &amp;&amp; continue
+      local_blocked=$(gh api &quot;repos/$REPO/issues/$n&quot; \
+        --jq &#x27;.issue_dependencies_summary.blocked_by // 0&#x27; 2&gt;/dev/null || echo 0)
+      [ &quot;$local_blocked&quot; -eq 0 ] &amp;&amp; echo &quot;$n&quot;
+    done
+}
+
+tracker_claim() {           # returns 0 only if we actually won the claim
+  local n=$1 me
+  me=$(gh api user --jq .login)
+  gh issue edit &quot;$n&quot; --repo &quot;$REPO&quot; --add-assignee &quot;@me&quot; \
+     --add-label &quot;swarm:claimed&quot; &gt;/dev/null 2&gt;&amp;1 || return 1
+  # readback — --add-assignee is last-write-wins, not compare-and-swap
+  gh issue view &quot;$n&quot; --repo &quot;$REPO&quot; --json assignees \
+     --jq &quot;.assignees[].login&quot; | grep -qx &quot;$me&quot;
+}
+
+tracker_release() {
+  local n=$1
+  gh issue edit &quot;$n&quot; --repo &quot;$REPO&quot; --remove-assignee &quot;@me&quot; \
+     --remove-label &quot;swarm:claimed&quot; --remove-label &quot;swarm:building&quot; \
+     --remove-label &quot;swarm:in-review&quot; &gt;/dev/null 2&gt;&amp;1 || true
+}
+
+tracker_label() {           # tracker_label &lt;n&gt; &lt;add&gt; [remove]
+  local n=$1 add=$2 rm=${3:-}
+  if [ -n &quot;$rm&quot; ]; then
+    gh issue edit &quot;$n&quot; --repo &quot;$REPO&quot; --add-label &quot;$add&quot; --remove-label &quot;$rm&quot; &gt;/dev/null 2&gt;&amp;1 || true
+  else
+    gh issue edit &quot;$n&quot; --repo &quot;$REPO&quot; --add-label &quot;$add&quot; &gt;/dev/null 2&gt;&amp;1 || true
+  fi
+}
+
+tracker_close() {
+  local n=$1 sha=$2
+  # tick the acceptance criteria implement never touches
+  local body
+  body=$(gh issue view &quot;$n&quot; --repo &quot;$REPO&quot; --json body -q .body \
+         | sed &#x27;s/^- \[ \]/- [x]/&#x27;)
+  gh issue edit &quot;$n&quot; --repo &quot;$REPO&quot; --body &quot;$body&quot; \
+     --remove-label &quot;swarm:in-review&quot; --remove-label &quot;ready-for-agent&quot; &gt;/dev/null 2&gt;&amp;1 || true
+  gh issue close &quot;$n&quot; --repo &quot;$REPO&quot; \
+     --comment &quot;Merged into \`$INTEGRATION\` as \`$sha\` by swarm.&quot; &gt;/dev/null
+}
+
+tracker_escalate() {
+  local n=$1 reason=$2 log=$3
+  gh issue comment &quot;$n&quot; --repo &quot;$REPO&quot; --body \
+&quot;**Swarm gave up after $MAX_ATTEMPTS attempts.**
+
+Reason: $reason
+
+Branch \`ticket/$n\` is pushed. Worktree kept at \`.wt/$n\`.
+Last 60 lines of the run log:
+
+\`\`\`
+$(tail -n 60 &quot;$log&quot; 2&gt;/dev/null || echo &#x27;(no log)&#x27;)
+\`\`\`&quot; &gt;/dev/null 2&gt;&amp;1 || true
+  gh issue edit &quot;$n&quot; --repo &quot;$REPO&quot; --add-label &quot;ready-for-human&quot; \
+     --remove-label &quot;ready-for-agent&quot; &gt;/dev/null 2&gt;&amp;1 || true
+  tracker_release &quot;$n&quot;
+}
+
+# ─────────────────────────────────────────────────────────────── ledger ──
+# A ticket is terminal when it has merged or been escalated. This marker is
+# LOCAL and authoritative for loop control: never let termination depend on a
+# remote label write succeeding, or a failed write re-queues the ticket forever.
+terminal()      { [ -f &quot;$SWARM/done/$1&quot; ]; }
+mark_terminal() { touch &quot;$SWARM/done/$1&quot;; }
+attempts()      { cat &quot;$SWARM/attempts/$1&quot; 2&gt;/dev/null || echo 0; }
+bump_attempt()  { echo $(( $(attempts &quot;$1&quot;) + 1 )) &gt; &quot;$SWARM/attempts/$1&quot;; }
+running_count() { find &quot;$SWARM/pid&quot; -type f 2&gt;/dev/null | wc -l | tr -d &#x27; &#x27;; }
+is_running()    { [ -f &quot;$SWARM/pid/$1&quot; ] &amp;&amp; kill -0 &quot;$(cat &quot;$SWARM/pid/$1&quot;)&quot; 2&gt;/dev/null; }
+
+# ─────────────────────────────────────────────────────────────── worker ──
+WORKER_RULES=&#x27;HARD RULES FOR THIS SESSION — violating any of them corrupts sibling agents:
+- NEVER run `git stash`. The stash reflog is shared across all worktrees.
+- NEVER run `git commit --amend`, `git rebase`, `git merge`, or `git push`.
+- NEVER run `git checkout &lt;branch&gt;` or `git switch`. Stay on the current branch.
+- NEVER touch the issue tracker. Do not run `gh issue` for any reason.
+- Allowed git: add, commit, diff, log, status, show.
+You are in a dedicated git worktree on a dedicated branch. Your entire job is to
+leave one or more commits on this branch. Something else merges and closes.&#x27;
+
+run_worker() {
+  local n=$1
+  local dir=&quot;$WT/$n&quot; branch=&quot;ticket/$n&quot;
+  local logf=&quot;$SWARM/logs/$n.jsonl&quot;
+  local base; base=$(git rev-parse &quot;$INTEGRATION&quot;)
+
+  git worktree remove --force &quot;$dir&quot; &gt;/dev/null 2&gt;&amp;1 || true
+  git branch -D &quot;$branch&quot; &gt;/dev/null 2&gt;&amp;1 || true
+  git worktree add -b &quot;$branch&quot; &quot;$dir&quot; &quot;$INTEGRATION&quot; &gt;/dev/null 2&gt;&amp;1
+
+  (
+    cd &quot;$dir&quot;
+    # ── build ──────────────────────────────────────────────────────────
+    timeout --kill-after=60s &quot;$WORKER_TIMEOUT&quot; \
+      pi -p --approve --mode json --model &quot;$MODEL&quot; \
+         --exclude-tools ask_question \
+         --append-system-prompt &quot;$WORKER_RULES&quot; \
+         &quot;/skill:implement $REPO#$n
+
+Read the ticket with: gh issue view $n --repo $REPO
+Echo its title back before you start, then build exactly that ticket and nothing else.
+Commit to the current branch when the acceptance criteria are met.&quot; \
+      &gt;&gt; &quot;$logf&quot; 2&gt;&amp;1 || { echo &quot;failed:implement&quot; &gt; &quot;$SWARM/result/$n&quot;; exit 0; }
+
+    # a run that produced no commit is a failure regardless of exit code
+    if [ &quot;$(git rev-list --count &quot;$base..HEAD&quot;)&quot; -eq 0 ]; then
+      echo &quot;failed:no-commit&quot; &gt; &quot;$SWARM/result/$n&quot;; exit 0
+    fi
+
+    # ── review, fresh context, read-only, after the commit ─────────────
+    timeout --kill-after=60s 20m \
+      pi -p --approve --model &quot;$REVIEW_MODEL&quot; \
+         --tools read,grep,find,ls \
+         &quot;/skill:code-review $base
+
+The originating ticket is $REPO#$n.
+End your response with exactly one line: VERDICT: PASS or VERDICT: FAIL&quot; \
+      &gt; &quot;$SWARM/logs/$n.review.md&quot; 2&gt;&amp;1 || true
+
+    if grep -q &#x27;^VERDICT: FAIL&#x27; &quot;$SWARM/logs/$n.review.md&quot;; then
+      echo &quot;failed:review&quot; &gt; &quot;$SWARM/result/$n&quot;; exit 0
+    fi
+
+    # ── merge, strictly serialized ─────────────────────────────────────
+    if flock -w 3600 &quot;$SWARM/merge.lock&quot; \
+         &quot;$ROOT/integrate.sh&quot; &quot;$n&quot; &quot;$branch&quot; &quot;$INTEGRATION&quot; &gt;&gt; &quot;$logf&quot; 2&gt;&amp;1; then
+      echo &quot;merged:$(git -C &quot;$ROOT&quot; rev-parse --short &quot;$INTEGRATION&quot;)&quot; &gt; &quot;$SWARM/result/$n&quot;
+    else
+      echo &quot;failed:merge&quot; &gt; &quot;$SWARM/result/$n&quot;
+    fi
+  ) &amp;
+
+  echo $! &gt; &quot;$SWARM/pid/$n&quot;
+  log &quot;→ #$n dispatched (attempt $(attempts &quot;$n&quot;), pid $!)&quot;
+}
+
+# ─────────────────────────────────────────────────────────────── reaper ──
+reap() {
+  local f n result kind
+  for f in &quot;$SWARM&quot;/pid/*; do
+    [ -e &quot;$f&quot; ] || continue
+    n=$(basename &quot;$f&quot;)
+    is_running &quot;$n&quot; &amp;&amp; continue
+    rm -f &quot;$f&quot;
+
+    result=$(cat &quot;$SWARM/result/$n&quot; 2&gt;/dev/null || echo &quot;failed:vanished&quot;)
+    rm -f &quot;$SWARM/result/$n&quot;
+    kind=${result%%:*}
+
+    if [ &quot;$kind&quot; = &quot;merged&quot; ]; then
+      mark_terminal &quot;$n&quot;
+      tracker_close &quot;$n&quot; &quot;${result#merged:}&quot;
+      git worktree remove --force &quot;$WT/$n&quot; 2&gt;/dev/null || true
+      log &quot;✓ #$n merged and closed — children may now be unblocked&quot;
+    else
+      bump_attempt &quot;$n&quot;
+      if [ &quot;$(attempts &quot;$n&quot;)&quot; -gt &quot;$MAX_ATTEMPTS&quot; ]; then
+        mark_terminal &quot;$n&quot;
+        git -C &quot;$WT/$n&quot; push -u origin &quot;ticket/$n&quot; &gt;/dev/null 2&gt;&amp;1 || true
+        tracker_escalate &quot;$n&quot; &quot;${result#*:}&quot; &quot;$SWARM/logs/$n.jsonl&quot;
+        log &quot;✗ #$n escalated to ready-for-human (${result#*:})&quot;
+      else
+        tracker_label &quot;$n&quot; &quot;ready-for-agent&quot; &quot;swarm:claimed&quot;
+        tracker_release &quot;$n&quot;
+        git worktree remove --force &quot;$WT/$n&quot; 2&gt;/dev/null || true
+        log &quot;↻ #$n requeued (${result#*:}), attempt $(attempts &quot;$n&quot;)/$MAX_ATTEMPTS&quot;
+      fi
+    fi
+  done
+}
+
+# ───────────────────────────────────────────────────────────── main loop ──
+case &quot;${1:-}&quot; in
+  --dry-run) log &quot;frontier:&quot;; tracker_frontier; exit 0 ;;
+  --status)  log &quot;running: $(running_count)/$MAX_PARALLEL&quot;
+             for f in &quot;$SWARM&quot;/attempts/*; do [ -e &quot;$f&quot; ] &amp;&amp; \
+               echo &quot;  #$(basename &quot;$f&quot;) attempts=$(cat &quot;$f&quot;)&quot;; done; exit 0 ;;
+esac
+
+git rev-parse --verify &quot;$INTEGRATION&quot; &gt;/dev/null 2&gt;&amp;1 \
+  || git branch &quot;$INTEGRATION&quot; HEAD
+log &quot;swarm start · repo=$REPO · integration=$INTEGRATION · slots=$MAX_PARALLEL&quot;
+
+idle_polls=0
+while true; do
+  reap
+
+  free=$(( MAX_PARALLEL - $(running_count) ))
+  dispatched=0
+  if [ &quot;$free&quot; -gt 0 ]; then
+    while read -r n; do
+      [ &quot;$free&quot; -le 0 ] &amp;&amp; break
+      is_running &quot;$n&quot; &amp;&amp; continue
+      terminal &quot;$n&quot; &amp;&amp; continue
+      if tracker_claim &quot;$n&quot;; then
+        tracker_label &quot;$n&quot; &quot;swarm:building&quot; &quot;swarm:claimed&quot;
+        run_worker &quot;$n&quot;
+        free=$(( free - 1 )); dispatched=$(( dispatched + 1 ))
+      else
+        log &quot;· #$n claimed by someone else, skipping&quot;
+      fi
+    done &lt; &lt;(tracker_frontier)
+  fi
+
+  if [ &quot;$(running_count)&quot; -eq 0 ] &amp;&amp; [ &quot;$dispatched&quot; -eq 0 ]; then
+    idle_polls=$(( idle_polls + 1 ))
+    if [ &quot;$idle_polls&quot; -ge 2 ]; then
+      log &quot;frontier empty and nothing running — done&quot;
+      exit 0
+    fi
+  else
+    idle_polls=0
+  fi
+
+  sleep &quot;$POLL_SECONDS&quot;
+done
+</code></pre>
+
+    <div class="prose">
+    <h3>integrate.sh — the junction</h3>
+    <p>Called only under <code>flock</code>. Uses a dedicated merge worktree so the primary checkout is never disturbed, and finishes with <code>git update-ref</code> passing the expected old value — a compare-and-swap that fails loudly if anything moved the integration tip while the lock was supposedly held.</p>
+    </div>
+<div class="filebar"><span>integrate.sh</span><span>never call directly — always via flock</span></div>
+<pre><code>#!/usr/bin/env bash
+# integrate.sh — the single-track junction.
+#
+#   Called ONLY under flock, by exactly one process at a time:
+#     flock -w 3600 .swarm/merge.lock ./integrate.sh &lt;ticket&gt; &lt;branch&gt; &lt;integration&gt;
+#
+#   Rebases the ticket branch onto the current integration tip, resolves any
+#   conflict with an agent, re-runs the gate against the merged result, and
+#   fast-forwards. Exits non-zero if the work cannot land — the caller retries
+#   or escalates.
+set -euo pipefail
+
+N=&quot;$1&quot;; BRANCH=&quot;$2&quot;; INTEGRATION=&quot;$3&quot;
+ROOT=&quot;$(git rev-parse --show-toplevel)&quot;
+GATE=&quot;${SWARM_GATE:-npm run typecheck &amp;&amp; npm test}&quot;
+MERGE_DIR=&quot;$ROOT/.wt/merge&quot;
+
+log() { printf &#x27;  [merge #%s] %s\n&#x27; &quot;$N&quot; &quot;$*&quot; &gt;&amp;2; }
+
+# A dedicated merge worktree so we never disturb the primary checkout,
+# and so an agent resolving conflicts has somewhere legitimate to work.
+git worktree remove --force &quot;$MERGE_DIR&quot; 2&gt;/dev/null || true
+git worktree add --detach &quot;$MERGE_DIR&quot; &quot;$BRANCH&quot; &gt;/dev/null 2&gt;&amp;1
+cd &quot;$MERGE_DIR&quot;
+
+cleanup() { cd &quot;$ROOT&quot;; git worktree remove --force &quot;$MERGE_DIR&quot; 2&gt;/dev/null || true; }
+trap cleanup EXIT
+
+log &quot;rebasing $BRANCH onto $INTEGRATION&quot;
+if ! git rebase &quot;$INTEGRATION&quot; &gt;/dev/null 2&gt;&amp;1; then
+  log &quot;conflict — handing to resolving-merge-conflicts&quot;
+
+  # The skill&#x27;s own rule: always resolve, never --abort. It reads commit
+  # messages and originating tickets for both sides to recover intent.
+  timeout --kill-after=60s 25m \
+    pi -p --approve --exclude-tools ask_question \
+       --append-system-prompt &#x27;You are resolving a rebase conflict inside a dedicated
+merge worktree. Do not run git stash, git push, or gh issue. You may run
+git add, git rebase --continue, git status, git diff, git log.&#x27; \
+       &quot;/skill:resolving-merge-conflicts
+
+Rebasing branch $BRANCH onto $INTEGRATION for ticket #$N.
+Preserve both intents. Never run git rebase --abort.
+Finish the rebase completely, then stop.&quot; &gt;&amp;2 || true
+
+  if [ -d &quot;$(git rev-parse --git-path rebase-merge)&quot; ] || \
+     [ -d &quot;$(git rev-parse --git-path rebase-apply)&quot; ]; then
+    log &quot;rebase still in progress after resolution attempt — abandoning&quot;
+    git rebase --abort &gt;/dev/null 2&gt;&amp;1 || true
+    exit 1
+  fi
+  log &quot;conflict resolved&quot;
+fi
+
+# Gate AFTER the rebase. The worker&#x27;s green was measured against a stale base;
+# two branches that each pass alone can still fail together.
+log &quot;running gate against the rebased result&quot;
+if ! bash -c &quot;$GATE&quot; &gt;&amp;2; then
+  log &quot;gate red after rebase — not landing&quot;
+  exit 1
+fi
+
+# Fast-forward only. If this is not a fast-forward, something raced us and the
+# lock was not held — fail loudly rather than creating a merge commit.
+cd &quot;$ROOT&quot;
+if ! git update-ref &quot;refs/heads/$INTEGRATION&quot; \
+      &quot;$(git -C &quot;$MERGE_DIR&quot; rev-parse HEAD)&quot; \
+      &quot;$(git rev-parse &quot;$INTEGRATION&quot;)&quot;; then
+  log &quot;integration tip moved under the lock — aborting&quot;
+  exit 1
+fi
+
+log &quot;landed as $(git rev-parse --short &quot;$INTEGRATION&quot;)&quot;
+exit 0
+</code></pre>
+
+    <div class="prose">
+    <h3>guard.ts — optional, but do it before you sleep through a run</h3>
+    <p>Prompt text is a request. pi's <code>tool_call</code> event fires before the tool executes and can return <code>{ block: true, reason }</code>, which makes the worker rules actually binding. Load with <code>-e ./guard.ts</code>.</p>
+    </div>
+<div class="filebar"><span>guard.ts</span><span>pi -e ./guard.ts</span></div>
+<pre><code>/**
+ * guard.ts — turns the worker guardrails from a prompt request into a rule.
+ *
+ *   pi -e ./guard.ts -p --approve &quot;/skill:implement owner/repo#42&quot;
+ *
+ * A worker runs inside a shared git common directory. `refs/stash` is shared
+ * across every worktree, and history rewrites break the integrator&#x27;s rebase.
+ * Prompt text is a request; `tool_call` blocking is a constraint.
+ *
+ * Returning { block: true } stops the tool before it executes. `terminate: true`
+ * ends the agent early when every finalized result in the batch is terminating,
+ * which avoids paying for a follow-up model call just to be told no.
+ */
+import { isToolCallEventType, type ExtensionAPI } from &quot;@earendil-works/pi-coding-agent&quot;;
+
+/** Each rule: a matcher against the raw command, and why it is refused. */
+const FORBIDDEN: Array&lt;{ test: RegExp; why: string }&gt; = [
+  {
+    test: /\bgit\s+stash\b/,
+    why: &quot;refs/stash is shared across all worktrees — stashing here can be popped by a sibling agent onto the wrong branch.&quot;,
+  },
+  {
+    test: /\bgit\s+commit\b[^\n|;&amp;]*--amend/,
+    why: &quot;amending rewrites a commit the integrator may already be rebasing.&quot;,
+  },
+  {
+    test: /\bgit\s+(rebase|merge|cherry-pick|reset\s+--hard)\b/,
+    why: &quot;history and integration belong to the integrator, not the worker.&quot;,
+  },
+  {
+    test: /\bgit\s+push\b/,
+    why: &quot;the worker never publishes; the scheduler owns the remote.&quot;,
+  },
+  {
+    // Allows `git checkout -- &lt;path&gt;` and `git checkout -p` (discarding local
+    // changes is legitimate). Blocks anything that moves or creates a branch.
+    test: /\bgit\s+(checkout|switch)\b(?!\s+(--(\s|$)|-p\b))/,
+    why: &quot;stay on the branch you were given; switching corrupts the ticket↔branch mapping.&quot;,
+  },
+  {
+    test: /\bgh\s+(issue|pr)\b/,
+    why: &quot;the tracker has exactly one writer, and it is the scheduler.&quot;,
+  },
+  {
+    test: /\bgit\s+worktree\b/,
+    why: &quot;worktree lifecycle is the scheduler&#x27;s; creating one here leaks state.&quot;,
+  },
+];
+
+export default function (pi: ExtensionAPI) {
+  pi.on(&quot;tool_call&quot;, (event) =&gt; {
+    if (!isToolCallEventType(&quot;bash&quot;, event)) return;
+
+    const command = event.input.command;
+    for (const rule of FORBIDDEN) {
+      if (rule.test.test(command)) {
+        return {
+          block: true,
+          reason:
+            `Blocked by swarm guard: ${rule.why}\n` +
+            `Finish your work with add/commit only, and leave the branch as-is.`,
+          terminate: false, // let the model recover and choose another path
+        };
+      }
+    }
+  });
+}
+</code></pre>
+
+    <div class="prose">
+    <h3>The local-markdown adapter</h3>
+    <p>If you configured <code>to-tickets</code> for local files rather than GitHub, tickets are one file per ticket at <code>.scratch/&lt;feature&gt;/issues/&lt;NN&gt;-&lt;slug&gt;.md</code> with a <code>Blocked by:</code> line and a <code>Status:</code> line. Substitute these five:</p>
+    </div>
+<div class="filebar"><span>tracker adapter · local markdown</span><span>drop-in replacement</span></div>
+<pre><code>ISSUES=<span class="c-s">".scratch/$FEATURE/issues"</span>
+
+tracker_frontier() {
+  <span class="c-k">for</span> f <span class="c-k">in</span> <span class="c-s">"$ISSUES"</span>/*.md; <span class="c-k">do</span>
+    n=$(basename <span class="c-s">"$f"</span> | cut -d- -f1)
+    grep -q <span class="c-s">'^Status: *ready-for-agent'</span> <span class="c-s">"$f"</span> || <span class="c-k">continue</span>
+    blocked=0
+    <span class="c-k">for</span> b <span class="c-k">in</span> $(sed -n <span class="c-s">'s/^Blocked by: *//p'</span> <span class="c-s">"$f"</span> | tr <span class="c-s">','</span> <span class="c-s">' '</span>); <span class="c-k">do</span>
+      [[ <span class="c-s">"$b"</span> =~ ^[0-9]+$ ]] || <span class="c-k">continue</span>
+      grep -q <span class="c-s">'^Status: *resolved'</span> <span class="c-s">"$ISSUES/$b"</span>-*.md <span class="c-v">2</span>&gt;/dev/null || blocked=1
+    <span class="c-k">done</span>
+    [ <span class="c-s">"$blocked"</span> -eq 0 ] &amp;&amp; <span class="c-k">echo</span> <span class="c-s">"$n"</span>
+  <span class="c-k">done</span>
+}
+<span class="c-c"># Claim is a file write, so flock the whole read-pick-claim (Tier 2, Fig. 06)</span>
+tracker_claim()  { sed -i <span class="c-s">'s/^Status: .*/Status: claimed/'</span> <span class="c-s">"$ISSUES/$1"</span>-*.md; }
+tracker_release(){ sed -i <span class="c-s">'s/^Status: .*/Status: ready-for-agent/'</span> <span class="c-s">"$ISSUES/$1"</span>-*.md; }
+tracker_close()  { sed -i -e <span class="c-s">'s/^Status: .*/Status: resolved/'</span> -e <span class="c-s">'s/^- \[ \]/- [x]/'</span> <span class="c-s">"$ISSUES/$1"</span>-*.md; }
+tracker_escalate(){ sed -i <span class="c-s">'s/^Status: .*/Status: ready-for-human/'</span> <span class="c-s">"$ISSUES/$1"</span>-*.md; }</code></pre>
+
+    <div class="note warn"><b>One caveat on local mode</b>
+      <p>The tickets live inside the repo, so every worker's worktree contains a copy of the ticket files, and the integrator will happily try to merge status-line edits between branches. Keep <code>.scratch/</code> out of the worktrees — either write ticket state to a path outside the repo, or add <code>.scratch/</code> to <code>.git/info/exclude</code> and manage it only from the primary checkout. GitHub Issues avoids this class of problem entirely, which is the main argument for using it.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">12 · Proof</div>
+  <div class="rail-body">
+    <h2>What the smoke tests showed</h2>
+    <div class="prose">
+    <p>Four scenarios, each in a throwaway git repo with <code>gh</code> and <code>pi</code> replaced by stubs that simulate the behaviour under test. This is cheap and catches the orchestration bugs that would otherwise surface at 3am with a live model attached.</p>
+    </div>
+
+    <table class="tbl">
+      <thead><tr><th style="width:24%">Scenario</th><th style="width:44%">Observed</th><th style="width:32%">Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>dependency unblock</td><td>#41 dispatched alone; #42 and #43 blocked. On #41's close the frontier recomputed and both dispatched in the same tick.</td><td>Continuous frontier works — no barrier, no idle slot</td></tr>
+        <tr><td>same file, two workers</td><td>Both edited <code>shared.txt</code> on different lines. Serialized through the lock; second rebased onto the first; both edits present.</td><td>Linear history, zero merge commits</td></tr>
+        <tr><td>line-level conflict</td><td>Both rewrote the same line. #71 landed; #72 conflicted, resolver agent invoked, resolved, re-gated, landed with both intents.</td><td>Conflict path fires and recovers</td></tr>
+        <tr><td>agent produces nothing</td><td>Exit 0 with no commit. Detected by commit count, requeued twice, escalated on attempt 3, clean exit.</td><td>Fixed — see below</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note"><b>The bug this caught</b>
+      <p>First run of the failure scenario: <strong>49 dispatches in 60 seconds.</strong> Escalation set the remote label but <code>tracker_release</code> cleared the assignee, so the ticket re-entered the frontier and was picked up again immediately — forever. With a live model that is a runaway spend with no natural stopping point.</p>
+      <p>The fix is the <code>.swarm/done/&lt;n&gt;</code> marker and the <code>terminal "$n" &amp;&amp; continue</code> guard in the dispatch loop. Loop control is local and authoritative; the remote label is a human-facing projection. Any orchestrator you write or adopt should be checked for exactly this property before you leave it running unattended.</p>
+    </div>
+
+<div class="filebar"><span>failure path, after the fix</span><span>observed output</span></div>
+<pre><code><span class="c-c">→ #55 dispatched (attempt 0, pid 4070)</span>
+<span class="c-d">↻ #55 requeued (no-commit), attempt 1/2</span>
+<span class="c-c">→ #55 dispatched (attempt 1, pid 4124)</span>
+<span class="c-d">↻ #55 requeued (no-commit), attempt 2/2</span>
+<span class="c-c">→ #55 dispatched (attempt 2, pid 4178)</span>
+<span class="c-d">✗ #55 escalated to ready-for-human (no-commit)</span>
+<span class="c-s">frontier empty and nothing running — done</span></code></pre>
+
+<div class="filebar"><span>conflict path</span><span>merge-stage log</span></div>
+<pre><code><span class="c-c">  [merge #71] rebasing ticket/71 onto integration</span>
+<span class="c-c">  [merge #71] running gate against the rebased result</span>
+<span class="c-s">  [merge #71] landed as 8266486</span>
+<span class="c-c">  [merge #72] rebasing ticket/72 onto integration</span>
+<span class="c-d">  [merge #72] conflict — handing to resolving-merge-conflicts</span>
+<span class="c-k">&gt;&gt;&gt; RESOLVER AGENT INVOKED &lt;&lt;&lt;</span>
+<span class="c-c">  [merge #72] conflict resolved</span>
+<span class="c-c">  [merge #72] running gate against the rebased result</span>
+<span class="c-s">  [merge #72] landed as 9f02dfd</span></code></pre>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">13 · Runbook</div>
+  <div class="rail-body">
+    <h2>Going from tickets to an unattended run</h2>
+    <div class="prose"><p>The ordering matters here, so the numbers are real. Steps 1–3 are once per repo; 4–7 are once per feature.</p></div>
+
+    <ol class="steps">
+      <li>
+        <h4>Install the skills where trust can't hide them</h4>
+        <p>Global install sidesteps pi's project-trust gate entirely, which removes a whole class of silent failure in fresh worktrees.</p>
+        <pre><code>npx skills@latest add mattpocock/skills -a pi -g
+<span class="c-c"># then, in the repo, once:</span>
+pi <span class="c-s">"/skill:setup-matt-pocock-skills"</span></code></pre>
+      </li>
+      <li>
+        <h4>Create the swarm labels</h4>
+        <p>Namespaced so they never collide with the canonical five.</p>
+        <pre><code><span class="c-k">for</span> l <span class="c-k">in</span> claimed building in-review; <span class="c-k">do</span>
+  gh label create <span class="c-s">"swarm:$l"</span> --color BFA43A --force
+<span class="c-k">done</span></code></pre>
+      </li>
+      <li>
+        <h4>Define the gate and prove it green</h4>
+        <p>The gate is the only objective signal the machine has. If it is flaky, the swarm will requeue good work and escalate it. Run it ten times on a clean tree first.</p>
+        <pre><code><span class="c-k">export</span> SWARM_GATE=<span class="c-s">"npm run typecheck &amp;&amp; npm test -- --run"</span></code></pre>
+      </li>
+      <li>
+        <h4>Run the human phases in one unbroken window</h4>
+        <p>Grill, spec, tickets — no clearing, no compaction between them. Name the TDD seams in the spec and check every acceptance criterion actually fails at the base commit. This is where AFK quality is decided.</p>
+      </li>
+      <li>
+        <h4>Neutralise the spec issue</h4>
+        <p>Non-negotiable. Otherwise your first worker tries to build the whole feature.</p>
+        <pre><code>gh issue edit <span class="c-v">40</span> --remove-label ready-for-agent
+<span class="c-k">export</span> SWARM_SPEC_ISSUE=<span class="c-v">40</span>   <span class="c-c"># belt and braces</span></code></pre>
+      </li>
+      <li>
+        <h4>Dry run, then one ticket, then the swarm</h4>
+        <p>Confirm the frontier is what you expect before spending anything. Then run a single ticket with one slot and read the whole log by hand — you are validating the ticket quality, not the script.</p>
+        <pre><code>./swarm.sh --dry-run
+SWARM_MAX_PARALLEL=<span class="c-v">1</span> ./swarm.sh
+SWARM_MAX_PARALLEL=<span class="c-v">3</span> ./swarm.sh</code></pre>
+      </li>
+      <li>
+        <h4>Watch the first parallel wave, then leave</h4>
+        <p>Concurrency of 3 is the sweet spot for most repos: each pi session is a full process, and memory plus provider rate limits bite before CPU does. Raise it only after you have seen a clean wave.</p>
+        <pre><code>tail -f .swarm/logs/*.jsonl | jq -rc <span class="c-s">'select(.type=="tool_execution_start") | .toolName'</span></code></pre>
+      </li>
+    </ol>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">14 · Prior art</div>
+  <div class="rail-body">
+    <h2>What already exists, and what to take from it</h2>
+    <div class="prose">
+    <p>pi's package catalogue lists roughly 5,500 packages, around 60 of which match "worktree" — this problem is being solved repeatedly and independently. None of them know about the Matt Pocock ticket contract, which is the part that actually breaks.</p>
+    </div>
+
+    <table class="tbl">
+      <thead><tr><th style="width:28%">Package</th><th style="width:40%">What it does</th><th style="width:32%">Worth taking</th></tr></thead>
+      <tbody>
+        <tr><td>@mancioshell/pi-board-agent</td><td>Autonomous GitHub Projects v2 executor — picks Ready cards, implements in parallel worktrees, one PR per plan</td><td>Closest existing shape to this design; read its card-state handling</td></tr>
+        <tr><td>pi-epicflow</td><td>Decomposes a design doc into a DAG of features, each on its own worktree+branch off a long-lived epic branch, squash-merged, single PR</td><td>The epic-branch pattern, if you want one PR rather than a stream of commits</td></tr>
+        <tr><td>@quintinshaw/pi-dynamic-workflows</td><td>~31k installs/mo. Model routing, worktree isolation, journaled resume, up to 16 concurrent, cost accounting</td><td>Journaled resume is the mature version of the run ledger sketched in Fig. 04</td></tr>
+        <tr><td>pi-autopilot</td><td>Transactional coordination, deterministic deadlock resolution, contradiction-only escalation, quality gates</td><td>Deadlock resolution, if your DAG has cycles you didn't intend</td></tr>
+        <tr><td>sandalsoft/pi-fleet</td><td>Kahn's-algorithm wave execution, worktree pool, three-way merge with node-diff3 plus dispatcher resolution for semantic conflicts</td><td>The semantic-conflict distinction; but see Fig. 05 on why waves cost you</td></tr>
+        <tr><td>avtc-pi-parallel-work-guardrail</td><td>Blocks or approves agent-called git operations that would disrupt parallel work, worktree-aware</td><td>A ready-made alternative to <code>guard.ts</code></td></tr>
+        <tr><td>examples/extensions/git-merge-and-resolve.ts</td><td>Ships with pi. Parses conflict hunks into file, line range, ours and theirs; feeds them back on <code>agent_end</code></td><td>Directly reusable in the integrator's conflict branch</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note ok"><b>Build or adopt?</b>
+      <p>Adopt if you want the mature parts — journaled resume, cost accounting, a TUI. Build if you want to understand the thing that runs unattended against your repo overnight. The scripts here are ~250 lines precisely so that when the swarm stalls, the answer is in a file you wrote rather than in someone else's abstraction. Whichever you choose, check it for the terminal-ledger property from §12 before trusting it with a budget.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<section>
+<div class="rail">
+  <div class="rail-tag">15 · Limits</div>
+  <div class="rail-body">
+    <h2>What this does not solve</h2>
+    <div class="prose">
+    <p>Being straight about the boundaries, because the failure modes that remain are the ones that will actually cost you.</p>
+    </div>
+    <ul class="plain">
+      <li><strong>Ticket quality is the ceiling, and it is set by a human.</strong> The swarm faithfully builds whatever <code>to-tickets</code> produced. A horizontally-sliced ticket gets built as a horizontal slice. Over-decomposition — twelve tickets for a three-line change — is the most reported friction on that skill, and an AFK fleet will dutifully spin up twelve worktrees for it.</li>
+      <li><strong>Semantic conflicts pass every check here.</strong> Two branches that each typecheck, each pass tests, and merge without a textual conflict can still be jointly wrong. The post-rebase gate catches the subset your tests cover. Nothing catches the rest, and no amount of orchestration will.</li>
+      <li><strong>An agent reviewing agent-written code is a weak signal.</strong> Running review in a fresh read-only session with no memory of writing the code is meaningfully better than the in-run review, which is why the design does it — but it is still a model grading a model. Treat <code>VERDICT: PASS</code> as a smoke test, not an approval.</li>
+      <li><strong>The wide-refactor tail stays serial.</strong> Expand → migrate batches → contract is a dependency chain by construction. Only the migrate batches parallelise. That is the graph's shape and no scheduler fixes it.</li>
+      <li><strong>No published measurement exists.</strong> The claim that grilling saves rework is plausible and, so far, unmeasured — nobody has published a controlled comparison against going straight to code. The same is true of parallel-agent throughput numbers circulating for pi worktree swarms. Treat the productivity claims, including the shape of Fig. 05, as reasoned estimates rather than data.</li>
+      <li><strong>pi has no permission system.</strong> It runs with the privileges of whoever launched it, and you are now launching it unattended, in a loop, with a model choosing the commands. If that matters for your repo, containerise before you automate — pi documents three patterns for it.</li>
+    </ul>
+
+    <div class="note"><b>The honest summary</b>
+      <p>The orchestration problem is small and solvable — about 250 lines, and this report's diagrams describe all of it. The hard part was never parallelism or merging. It is that <code>implement</code> stops at a commit and the frontier is defined by closure, so the whole loop hinges on a state transition that no skill performs. Own that transition and the rest follows.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<footer class="foot">
+  <span>Verified against earendil-works/pi @ 2a9b4eb (v0.84.1) and mattpocock/skills @ main</span>
+  <span>Scripts smoke-tested · 4 scenarios · 1 runaway-loop bug found and fixed</span>
+  <span>12 Aug 2026</span>
+</footer>
+
+</div>
+</body>
+</html>
